@@ -1,9 +1,3 @@
-## v2.8.1 维护版
-
-- 统一 service.sh / touch_daemon.sh / post-fs-data.sh 版本标记为 v2.8.1
-- 清理安装包内运行时文件（日志/PID）
-- 功能与 v2.8 一致：无 gesture_control 写入，音量键弹窗正常
-
 # touch_Y700G4_C16 v2.8 修复版（二合一）
 
 **v2.8 修复版**：游戏内音量键弹窗卡顿问题。
