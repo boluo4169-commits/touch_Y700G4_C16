@@ -1,3 +1,8 @@
+## v3.0.1T 维护版
+
+- 统一 service.sh / touch_daemon.sh / post-fs-data.sh 版本标记为 v3.0.1T
+- 功能与 v3.0T 一致：无 gesture_control 写入，音量键弹窗正常
+
 # touch_Y700G4_C16T v3.0T 单触控版
 
 **v3.0T 修复版**：游戏内音量键弹窗卡顿问题。
