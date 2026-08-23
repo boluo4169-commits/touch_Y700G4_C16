@@ -1,7 +1,0 @@
-id=touch_Y700G4_C16
-name=touch_Y700G4_C16
-version=v3.0
-versionCode=300
-author=骏冲冲
-description=直控Novatek触控：360Hz高采样、游戏模式、低延迟；负载温度自适应调频。
-updateJson=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main/update.json
