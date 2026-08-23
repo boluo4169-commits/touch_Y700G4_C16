@@ -60,6 +60,17 @@
 
 KSU 内检测更新会直接提示本版本（versionCode 4210）。
 
+## ⚠️ KernelSU 用户须知
+
+刷入 extreme_gt 后，KSU Manager 可能弹出「模块包含系统文件，需要安装元模块」提示——**直接忽略即可，无需安装元模块**。
+
+本模块自带 bind mount 挂载逻辑（已修复 KSU 兼容性），重启后自动生效，可用以下命令自行验证：
+
+```bash
+# 读到 feature_enable=false 即为挂载成功
+grep feature_enable /odm/etc/temperature_profile/sys_thermal_control_config.xml
+```
+
 ## 🔄 更新
 
 - 自动：KSU Manager → 模块 → 检查更新
