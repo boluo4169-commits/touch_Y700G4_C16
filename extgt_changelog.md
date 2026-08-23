@@ -1,5 +1,8 @@
 # Extreme GT 4.2.1-safe_Y700G4 更新日志
 
+> ℹ️ 本模块（id=extreme_gt）与触控模块（id=touch_Y700G4_C16T）互相独立。
+> 若你之前装过旧的二合一模块 touch_Y700G4_C16 或其他温控类模块（如原版 Extreme GT），**请先卸载并重启后再刷入本模块**，避免同类功能冲突。
+
 ## 4.2.1-safe_Y700G4（versionCode 4210）
 
 基于 SCENE Extreme GT 4.2.1 的联想拯救者 Y700 四代真机深度适配版。
