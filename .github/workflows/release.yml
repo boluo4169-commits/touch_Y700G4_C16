@@ -38,8 +38,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            touch_Y700G4_C16T_${GITHUB_REF_NAME}.zip
-            extreme_gt_${GITHUB_REF_NAME}.zip
+            touch_Y700G4_C16T_${{ github.ref_name }}.zip
+            extreme_gt_${{ github.ref_name }}.zip
           generate_release_notes: true
           draft: false
           prerelease: false
