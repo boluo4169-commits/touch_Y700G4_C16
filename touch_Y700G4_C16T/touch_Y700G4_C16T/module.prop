@@ -1,0 +1,7 @@
+id=touch_Y700G4_C16T
+name=touch_Y700G4_C16T (单触控版)
+version=v3.3T
+versionCode=320
+author=骏冲冲
+description=单触控版：直控Novatek触控IC，360Hz高采样、游戏模式、低延迟、120/144/165帧率切换、分场景防断触守护。不含负载/温度自动调频，适合已有独立调频方案的用户。支持云端更新。
+updateJson=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main/touch_Y700G4_C16T/update.json
