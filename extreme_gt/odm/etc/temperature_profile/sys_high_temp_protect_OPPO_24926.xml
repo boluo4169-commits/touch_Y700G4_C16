@@ -1,0 +1,36 @@
+<filter-conf>
+    <!-- project:19065 -->
+    <version>2024112901</version>
+    <isOpen>0</isOpen>
+    <filter-name>sys_high_temp_protect</filter-name>
+    <HighTemperatureProtectSwitch>false</HighTemperatureProtectSwitch> 
+    <HighTemperatureShutdownSwitch>false</HighTemperatureShutdownSwitch>
+    <HighTemperatureFirstStepSwitch>false</HighTemperatureFirstStepSwitch>
+    <CountBatteryChangedForFosUpdateTime>30</CountBatteryChangedForFosUpdateTime> 
+    <HighTemperatureShutdownUpdateTime>15</HighTemperatureShutdownUpdateTime>
+    <HighTemperatureProtectFirstStepIn>550</HighTemperatureProtectFirstStepIn>
+    <HighTemperatureProtectFirstStepOut>530</HighTemperatureProtectFirstStepOut>
+    <HighTemperatureProtectThresholdIn>570</HighTemperatureProtectThresholdIn> 
+    <HighTemperatureProtectThresholdOut>550</HighTemperatureProtectThresholdOut>
+    <HighTemperatureProtectShutDown>750</HighTemperatureProtectShutDown>
+    <MediumTemperatureProtectThreshold>10000</MediumTemperatureProtectThreshold>
+    <HighTemperatureDisableFlashSwitch>false</HighTemperatureDisableFlashSwitch>
+    <HighTemperatureDisableFlashLimit>480</HighTemperatureDisableFlashLimit>
+    <HighTemperatureEnableFlashLimit>470</HighTemperatureEnableFlashLimit>
+    <HighTemperatureDisableFlashChargeSwitch>false</HighTemperatureDisableFlashChargeSwitch>
+    <HighTemperatureDisableFlashChargeLimit>480</HighTemperatureDisableFlashChargeLimit>
+    <HighTemperatureEnableFlashChargeLimit>470</HighTemperatureEnableFlashChargeLimit>
+	<DoubleCheckTime>60000</DoubleCheckTime>
+    <camera_temperature_limit>520</camera_temperature_limit>
+    <HighTemperatureControlVideoRecordSwitch>false</HighTemperatureControlVideoRecordSwitch>
+    <HighTemperatureDisableVideoRecordLimit>550</HighTemperatureDisableVideoRecordLimit>
+    <HighTemperatureEnableVideoRecordLimit>520</HighTemperatureEnableVideoRecordLimit>
+    <ToleranceFirstStepIn>500</ToleranceFirstStepIn>
+    <ToleranceFirstStepOut>480</ToleranceFirstStepOut>
+    <ToleranceSecondStepIn>520</ToleranceSecondStepIn>
+    <ToleranceSecondStepOut>500</ToleranceSecondStepOut>
+    <ToleranceThreshold>50</ToleranceThreshold>
+    <ToleranceStart>480</ToleranceStart>
+    <ToleranceStop>460</ToleranceStop>
+    <ToleranceInterval>30000</ToleranceInterval>
+</filter-conf>

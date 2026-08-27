@@ -1,8 +1,8 @@
 id=extreme_gt
 name=Extreme GT
-version=4.2.1-safe_Y700G4
-versionCode=4210
+version=4.2.1-clean_Y700G4
+versionCode=4220
 author=嘟嘟ski & 骏冲冲
-description=Y700G4_C16 专适版（安全版）：伪装外壳/存储类温度解除降频锁帧，保留电池真实温度兜底，充电保护正常。基于真机88个温区实测适配SM8750P。
+description=Y700G4_C16 专适版（干净版）：仅移除仓库内 MTK 平台 (d1x00) 死代码与冗余脚本，行为与 4.2.1-safe 完全一致 —— 伪装外壳/存储类温度解除降频锁帧，保留电池真实温度兜底，充电保护正常。基于真机88个温区实测适配SM8750P。
 minMagisk=17000
-updateJson=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main/extgt_update.json
+updateJson=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main/extgt_update_v4.json
