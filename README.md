@@ -2,6 +2,12 @@
 
 联想拯救者 Y700 第四代（骁龙 8 至尊版 / SM8750P，ColorOS 16 移植版）专用 KernelSU / Magisk 模块集合。
 
+> 🆕 **v4.0-clean 仓库整理版已发布（2026-08-27）**
+> 本次只整理源码、清理 MTK 平台死代码、补全 build/CI 基础设施 —— **不改变任何模块行为**。
+> - extreme_gt：4.2.1-safe → 4.2.1-clean（行为 100% 一致）
+> - touch_Y700G4_C16T：源码首次入库，KSU Manager 云端更新通道启用
+> - KSU Manager 应自动提示更新；如未提示，可在模块页手动 "检查更新"
+
 > ⚠️ **v3.0 二合一模块（touch_Y700G4_C16）已停止维护并移除**，由下面两个独立模块替代。详见 [changelog.md](changelog.md)。
 
 ## 📦 模块列表
