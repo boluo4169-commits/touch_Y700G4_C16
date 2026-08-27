@@ -1,0 +1,41 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build touch_Y700G4_C16T zip
+        run: |
+          cd touch_Y700G4_C16T/touch_Y700G4_C16T
+          zip -r ../../../touch_Y700G4_C16T_${GITHUB_REF_NAME}.zip .
+          cd ../../..
+
+      - name: Build extreme_gt zip
+        run: |
+          cd extreme_gt
+          zip -r ../extreme_gt_y700g4_${GITHUB_REF_NAME}.zip .
+          cd ..
+
+      - name: List artifacts
+        run: ls -la *.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            touch_Y700G4_C16T_${GITHUB_REF_NAME}.zip
+            extreme_gt_y700g4_${GITHUB_REF_NAME}.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false

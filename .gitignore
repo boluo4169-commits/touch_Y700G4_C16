@@ -1,4 +1,19 @@
-T_download/
-T_work/
-T_changelog_v3.2T.md
+# 构建产物
 *.zip
+
+# 工作文件 (与仓库无关的临时)
+T_*/
+T_*.md
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Shell 检查缓存
+.shellcheckrc
+
+# Python 缓存
+__pycache__/
+*.pyc
