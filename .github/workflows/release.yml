@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build module zips (KSU 格式: module.prop 在 zip 根)
+      - name: Build module zips (KSU format)
         run: bash build.sh
 
       - name: List artifacts
