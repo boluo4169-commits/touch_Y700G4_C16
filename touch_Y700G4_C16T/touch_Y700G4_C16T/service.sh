@@ -1,8 +1,11 @@
 #!/system/bin/sh
 # ============================================================
-# 触控优化模块 - service.sh (v2.7)
+# 触控优化模块 - service.sh (v4.1)
 # 通过 /proc 节点直控 Novatek 触控硬件
-# 包含亮屏自动恢复守护，防止熄屏后状态丢失
+# v4.1: 重新启用守护 —— mtime 触发式低打扰方案 (touch_daemon.sh)
+#   v3.3T 曾因"2s 轮询读取经 I2C 干扰 IC"停用守护;
+#   v4.1 改为 stat(mtime) 轮询, 静止期零 I2C 操作,
+#   仅在系统实际触碰过触控配置后才进行 I2C 读/写。
 # 读取 config 动态适配帧率：fps=120 / 144 / 165
 # ============================================================
 
@@ -27,7 +30,7 @@ until [ "$(getprop sys.boot_completed)" = "1" ]; do
 done
 sleep 10
 
-echo "$(date): ========== touch_Y700G4_C16T v3.2T start (fps=${TARGET_FPS}) ==========" > "$LOG_FILE"
+echo "$(date): ========== touch_Y700G4_C16T v4.1 start (fps=${TARGET_FPS}) ==========" > "$LOG_FILE"
 
 # ============================================================
 # 统一写入函数
@@ -35,7 +38,7 @@ echo "$(date): ========== touch_Y700G4_C16T v3.2T start (fps=${TARGET_FPS}) ====
 apply_touch_tuning() {
     local tag="$1"  # "boot" 或 "recover"
     local changed=0
-    
+
     if [ -f /proc/HighReportRate ]; then
         local cur=$(cat /proc/HighReportRate 2>/dev/null)
         if [ "$cur" != "High Report Rate state 1!" ]; then
@@ -94,11 +97,19 @@ $RESETPROP persist.sys.touch_priority 1
 $RESETPROP persist.vendor.touch_priority 1
 
 # ============================================================
-# 后台守护：每2秒检测，发现被重置则立刻恢复
-# 独立脚本 touch_daemon.sh, 用setsid完全脱离本会话常驻
-# 防止熄屏唤醒后 & 系统事件导致的节点复位
+# mtime 触发式低打扰守护 (v4.1)
+# 每 2 秒纯 stat 轮询 4 个节点 mtime (零 I2C); 系统动了配置先防抖
+# 2s (隔离进游戏/退游戏/音量键面板的写入风暴, 期间零 I2C), 风暴停后:
+#   读 game_mode => 进游戏等 3s 校验只写异常节点 / 非游戏放手+10s 冷却
+#   游戏内 => 每 30s 兜底扫描 HRR (覆盖驱动内部重置)
 # ============================================================
 TOUCH_DAEMON="$MODDIR/touch_daemon.sh"
-chmod 755 "$TOUCH_DAEMON" 2>/dev/null
-# v3.3T: 守护已停用(实测轮询读取干扰IC致游戏内触控冻结)
-echo "$(date): 守护已停用(write-once模式) 跳过启动" >> "$LOG_FILE"
+if [ -f /proc/HighReportRate ] && [ -f "$TOUCH_DAEMON" ]; then
+    chmod 755 "$TOUCH_DAEMON" 2>/dev/null
+    # 防重复启动 (模块更新后未重启又重跑 service 的情况)
+    pkill -f touch_daemon.sh 2>/dev/null
+    setsid "$TOUCH_DAEMON" >/dev/null 2>&1 &
+    echo "$(date): v4.1 mtime 守护已启动 (pid=$!)" >> "$LOG_FILE"
+else
+    echo "$(date): 触控节点/守护脚本缺失, 守护不启动" >> "$LOG_FILE"
+fi

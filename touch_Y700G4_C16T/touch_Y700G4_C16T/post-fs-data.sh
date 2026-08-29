@@ -18,7 +18,7 @@ RESETPROP="/data/adb/ksu/bin/resetprop"
 [ ! -x "$RESETPROP" ] && RESETPROP="resetprop"
 
 LOG_FILE="$MODDIR/apply.log"
-echo "$(date): touch_Y700G4_C16T v1.0 (触控专版) post-fs-data start (fps=${TARGET_FPS})" > "$LOG_FILE"
+echo "$(date): touch_Y700G4_C16T v4.1 post-fs-data start (fps=${TARGET_FPS})" > "$LOG_FILE"
 
 # === ro 属性（帧率覆写） ===
 $RESETPROP ro.surface_flinger.game_default_frame_rate_override "$TARGET_FPS"

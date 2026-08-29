@@ -1,104 +1,145 @@
 #!/system/bin/sh
 # ============================================================
-# 触控守护 touch_daemon.sh (v3.3T)
-# 每2秒哨兵检测: 游戏内(gm=2)只读 HRR 一个节点, 异常才恢复
+# touch_daemon.sh v4.1 — mtime 触发式低打扰守护
 #
-# v3.2T 修复 (同步主模块 v3.0, 针对游戏内触控冻结2~3秒):
-#   恢复写入从"固定三节点全量重写"改为"只写实际异常的节点"。
-#   原逻辑即使只有 HRR 掉档, 也会同时重写 game_edge + report_threshold,
-#   多余的 I2C 写入会扩大触控IC配置切换窗口 => 加重卡触感。
-#   现在哪个节点异常就只恢复哪个, 最小化对IC的打扰。
-#   (game_mode 依旧完全不碰, 由系统独占管理)
+# 设计原则 (继承 v1.x~v3.3T 全部实测结论, 见仓库旧版注释):
+#   1. 对 IC 的每次 I2C 读/写都是打扰, 静止期必须零 I2C 操作
+#      (v3.3T 实测: 2s 轮询"读"也干扰 IC 致游戏内触控冻结 => 守护整体停用)
+#   2. /proc 节点不支持 inotify, 但实测"写"节点会更新 mtime
+#      (本机 HRR 节点 mtime 随系统写入变化), 而 stat() 是纯 VFS
+#      操作, 不触发驱动 read/write 回调 => 用 mtime 轮询作触发信号
+#   3. game_mode 永远只读不写 (v1.6: 与系统拉锯是断触元凶)
+#   4. 非游戏场景完全放手 (v2.7: 插入写会打断系统退出配置序列,
+#      导致触控全失效 2~3 秒)
+#   5. 恢复只写实际异常的节点 (v3.2T: 最小化 I2C 写入)
 #
-# v1.4 修复: 检测间隔 5秒→1秒 (实测日志: 游戏期间节点每1~10分钟被重置,
-# 40分钟内重置8次, 5秒检测窗口内滑动必然断触; 1秒轮询将掉档窗口压到最短)
-# v1.3 修复 (针对团战实测"左下移动键断触卡顿"):
-#   - 移除 dumpsys display 屏幕检测: 每5秒binder重调用, 游戏场景下
-#     与system_server竞争输入事件处理 => 周期性微卡顿/断触感
-#   - 恢复写入改为单次+读回验证(重试≤2次, 无sleep):
-#     原v1.2"连续2次间隔1秒"让IC停留在配置切换窗口更久, 放大断触
-# v1.2 修复 (针对暗区突围实测断触):
-#   - 检测间隔 30秒→5秒: 实测游戏期间节点被系统/游戏重置6次,
-#     30秒窗口内触控采样率掉档 => 开镜/探头连点断触
-# v1.1 修复: 原版只检查 HighReportRate 一个节点,
-# 若 game_mode/game_edge/report_threshold 被重置而 HRR 未变,
-# 守护不会恢复 => 现改为检查全部4个节点, 任一异常则全部恢复
+# 工作流:
+#   每 WATCH_INTERVAL 秒 stat 4 个节点的 mtime (零 I2C)
+#   ├─ mtime 无变化 => 本轮结束, 零打扰
+#   ├─ mtime 变化 => 先防抖 DEBOUNCE 秒 (等系统写入风暴结束,
+#   │   期间零 I2C —— 音量键面板/退出游戏的配置序列都在这里被隔离)
+#   ├─ 防抖到期 => 读一次 game_mode 判断场景:
+#   │   ├─ gm=2 (进游戏/游戏内配置切换): 再等 ENTER_SETTLE 秒然后读
+#   │   │   三节点, 只写异常的
+#   │   └─ gm!=2 (退出游戏/非游戏): 完全放手, 冷却 EXIT_COOLDOWN 秒
+#   └─ 游戏内 (gm=2) 期间: 每 SCAN_INTERVAL 秒兜底扫描一次 HRR
+#      (覆盖"驱动内部重置不走 proc 写、mtime 不变"的情况)
 # ============================================================
 
 MODDIR=$(cd "$(dirname "$0")" && pwd)
 LOG_FILE="$MODDIR/apply.log"
 PID_FILE="$MODDIR/daemon.pid"
 
+WATCH_INTERVAL=2      # mtime 轮询周期(纯 stat, 零 I2C)
+DEBOUNCE=2            # mtime 变化后的防抖: 等系统配置写入风暴结束再做 I2C 读
+ENTER_SETTLE=3        # 判定进游戏后再等系统配置收敛的秒数
+EXIT_COOLDOWN=10      # 退出游戏后冷却秒数 (v3.3 实测值)
+SCAN_INTERVAL=30      # 游戏内兜底扫描周期(单节点 HRR 读)
+
 echo $$ > "$PID_FILE"
 
+HRR_OK="High Report Rate state 1!"
+GE_OK="Game edge state 1!"
+RT_OK="Report Threshold state 1!"
+
+mtime_of() { stat -c %Y "$1" 2>/dev/null; }
+log() { echo "$(date): $1" >> "$LOG_FILE"; }
+
+# ---- 基线 mtime (service.sh 刚写入完毕, 取当前值) ----
+M_HRR=$(mtime_of /proc/HighReportRate)
+M_GM=$(mtime_of /proc/game_mode)
+M_GE=$(mtime_of /proc/game_edge)
+M_RT=$(mtime_of /proc/report_threshold)
+
+GM=""              # 缓存场景值, 仅防抖到期后才读一次
+PENDING=0          # 冷却期内发生过 mtime 变化, 冷却结束后补判一次场景
+COOLDOWN_UNTIL=0
+DEBOUNCE_AT=0      # >0 = mtime 变化后的防抖到期时间点
+VERIFY_AT=0        # >0 = 挂起中的"进游戏校验"时间点
+LAST_SCAN=0
+
+log "[v4.1] mtime 守护启动 interval=${WATCH_INTERVAL}s debounce=${DEBOUNCE}s settle=${ENTER_SETTLE}s cooldown=${EXIT_COOLDOWN}s scan=${SCAN_INTERVAL}s"
+
 while true; do
-    sleep 2
-    # v2.7: 分场景工作! 先读 game_mode 判断当前场景:
-    #   游戏内(gm=2): HRR被重置则恢复 => 防游戏内断触
-    #   非游戏(gm=0, 含来电/滑出游戏): 完全放手!
-    #     根因(今日实测): 来电/滑出游戏时系统执行"退出游戏配置"序列
-    #     (写HRR0+gm0+support_pen1+发I2C命令+切帧率), 守护在序列过程中
-    #     插入写HRR=1, 打断配置 => IC停在半配置状态, 触控完全失效,
-    #     直到重新进游戏(系统重新完整配置)才恢复。放手后不再打断。
-    # v1.7: 检测间隔 5s→2s (来电场景: 系统会关HRR写0+频繁切帧率触发驱动重置,
-    #   实测来电时段节点反复掉, 5秒窗口内屏幕完全失控; 2秒单节点轮询打扰极小)
-    # v1.6: 移除game_mode写入! dmesg铁证: 系统在游戏/帧率切换时主动写
-    #   game_mode=2(moto_apk_state2)并执行整套触控配置, 我们强制写回1反而与
-    #   系统拉锯, 每次切换都扰动触控IC => 断触元凶。game_mode完全交给系统管理。
-    # v1.5: 哨兵模式, 减少对IC的打扰(1秒轮询实测诱发更频繁重置)
+    sleep "$WATCH_INTERVAL"
+    NOW=$(date +%s)
 
-    GM=$(cat /proc/game_mode 2>/dev/null)
+    # ---- 1. mtime 轮询 (零 I2C) ----
+    CHANGED=0
+    T=$(mtime_of /proc/HighReportRate);   [ "$T" != "$M_HRR" ] && { M_HRR=$T; CHANGED=1; }
+    T=$(mtime_of /proc/game_mode);        [ "$T" != "$M_GM" ]  && { M_GM=$T;  CHANGED=1; }
+    T=$(mtime_of /proc/game_edge);        [ "$T" != "$M_GE" ]  && { M_GE=$T;  CHANGED=1; }
+    T=$(mtime_of /proc/report_threshold); [ "$T" != "$M_RT" ]  && { M_RT=$T;  CHANGED=1; }
 
-    # v3.3: exit-game window (gm 2->other): system runs exit sequence,
-    # reading HRR via I2C interrupts IC config switch => touch dead 2~3s.
-    # After leaving game scene, cooldown 10s without touching any node.
-    if [ "$PREV_GM" = "2" ] && [ "$GM" != "2" ]; then
-        echo "$(date): [cooldown] exit game scene, cooldown 10s" >> "$LOG_FILE"
-        COOLDOWN=$(( $(date +%s) + 10 ))
+    if [ "$CHANGED" = "1" ]; then
+        if [ "$NOW" -ge "$COOLDOWN_UNTIL" ]; then
+            # 防抖: 系统可能正在跑配置序列(进游戏/退游戏/音量键面板),
+            # 等写入风暴结束, 期间零 I2C。风暴持续则不断顺延。
+            DEBOUNCE_AT=$(( NOW + DEBOUNCE ))
+            VERIFY_AT=0
+        else
+            # 冷却期内系统仍在写: 记下来, 冷却结束后补判
+            PENDING=1
+        fi
     fi
-    PREV_GM="$GM"
-    NOW_TS=$(date +%s)
-    if [ -n "$COOLDOWN" ] && [ "$NOW_TS" -lt "$COOLDOWN" ]; then
+
+    # ---- 2. 冷却结束后的待定补判 ----
+    if [ "$PENDING" = "1" ] && [ "$NOW" -ge "$COOLDOWN_UNTIL" ]; then
+        PENDING=0
+        DEBOUNCE_AT=$(( NOW + DEBOUNCE ))
+    fi
+
+    # ---- 3. 防抖到期: 读一次场景值 (整个序列中唯一的 I2C 读) ----
+    if [ "$DEBOUNCE_AT" -gt 0 ] && [ "$NOW" -ge "$DEBOUNCE_AT" ]; then
+        DEBOUNCE_AT=0
+        GM=$(cat /proc/game_mode 2>/dev/null)
+        if [ "$GM" = "2" ]; then
+            # 进游戏/游戏内配置切换: 再等系统配置收敛, 然后校验
+            VERIFY_AT=$(( NOW + ENTER_SETTLE ))
+            LAST_SCAN=$VERIFY_AT
+        else
+            # 非游戏/退出游戏: 完全放手, 只冷却
+            COOLDOWN_UNTIL=$(( NOW + EXIT_COOLDOWN ))
+            VERIFY_AT=0
+            log "[scene] gm=$GM 非游戏场景, 放手中 (cooldown ${EXIT_COOLDOWN}s)"
+        fi
+    fi
+
+    # ---- 2. 挂起的进游戏校验 (只写异常节点, v3.2T 规则) ----
+    if [ "$VERIFY_AT" -gt 0 ] && [ "$NOW" -ge "$VERIFY_AT" ]; then
+        VERIFY_AT=0
+        HRR=$(cat /proc/HighReportRate 2>/dev/null)
+        GE=$(cat /proc/game_edge 2>/dev/null)
+        RT=$(cat /proc/report_threshold 2>/dev/null)
+        if [ "$HRR" != "$HRR_OK" ] || [ "$GE" != "$GE_OK" ] || [ "$RT" != "$RT_OK" ]; then
+            [ "$HRR" != "$HRR_OK" ] && echo 1 > /proc/HighReportRate 2>/dev/null
+            [ "$GE"  != "$GE_OK"  ] && echo 1 > /proc/game_edge 2>/dev/null
+            [ "$RT"  != "$RT_OK"  ] && echo 1 > /proc/report_threshold 2>/dev/null
+            # 自己写完要刷新基线 mtime, 避免下轮误判为"系统又动了"
+            M_HRR=$(mtime_of /proc/HighReportRate)
+            M_GE=$(mtime_of /proc/game_edge)
+            M_RT=$(mtime_of /proc/report_threshold)
+            log "[verify] 进游戏校验: 异常节点已恢复 HRR=$(cat /proc/HighReportRate 2>/dev/null) GE=$(cat /proc/game_edge 2>/dev/null) RT=$(cat /proc/report_threshold 2>/dev/null)"
+        fi
         continue
     fi
 
-    if [ "$GM" = "2" ]; then
-        # ===== 游戏内: 哨兵模式防断触 =====
-        # 哨兵检测: 只读 HRR 一个核心节点
-        HRR=$(cat /proc/HighReportRate 2>/dev/null)
-
-        if [ "$HRR" = "High Report Rate state 1!" ]; then
-            continue  # 哨兵正常, 不打扰IC, 直接下一轮
-        fi
-
-        # 哨兵异常 -> 全量检查
-        GE=$(cat /proc/game_edge 2>/dev/null)
-        RT=$(cat /proc/report_threshold 2>/dev/null)
-
-        # v1.1: 任一节点异常即触发恢复
-        NEED_RECOVER=0
-        [ "$HRR" != "High Report Rate state 1!" ] && NEED_RECOVER=1
-        [ "$GE" != "Game edge state 1!" ] && NEED_RECOVER=1
-        [ "$RT" != "Report Threshold state 1!" ] && NEED_RECOVER=1
-
-        if [ "$NEED_RECOVER" = "1" ]; then
-            # v1.3: 单次写入+读回验证(重试≤2次, 无sleep)
-            # 原v1.2"连续2次间隔1秒"让IC停留在配置切换窗口更久, 放大断触窗口
-            retry=0
-            while [ $retry -lt 3 ]; do
-                # v3.2T: 哪个节点异常就只恢复哪个, 最小化 I2C 写入
-                [ "$HRR" != "High Report Rate state 1!" ] && echo 1 > /proc/HighReportRate 2>/dev/null
-                [ "$GE" != "Game edge state 1!" ] && echo 1 > /proc/game_edge 2>/dev/null
-                [ "$RT" != "Report Threshold state 1!" ] && echo 1 > /proc/report_threshold 2>/dev/null
-                HRR=$(cat /proc/HighReportRate 2>/dev/null)
+    # ---- 3. 游戏内兜底扫描 (覆盖驱动内部重置, mtime 不变的情况) ----
+    if [ "$GM" = "2" ] && [ "$NOW" -ge "$COOLDOWN_UNTIL" ]; then
+        if [ $(( NOW - LAST_SCAN )) -ge "$SCAN_INTERVAL" ]; then
+            LAST_SCAN=$NOW
+            HRR=$(cat /proc/HighReportRate 2>/dev/null)
+            if [ "$HRR" != "$HRR_OK" ]; then
                 GE=$(cat /proc/game_edge 2>/dev/null)
                 RT=$(cat /proc/report_threshold 2>/dev/null)
-                [ "$HRR" = "High Report Rate state 1!" ] && [ "$GE" = "Game edge state 1!" ] && [ "$RT" = "Report Threshold state 1!" ] && break
-                retry=$((retry + 1))
-            done
-            echo "$(date): [recover] 游戏内节点被重置，已恢复 HRR=$HRR GE=$GE RT=$RT (重试${retry}次)" >> "$LOG_FILE"
+                [ "$GE" != "$GE_OK" ] && echo 1 > /proc/game_edge 2>/dev/null
+                [ "$RT" != "$RT_OK" ] && echo 1 > /proc/report_threshold 2>/dev/null
+                echo 1 > /proc/HighReportRate 2>/dev/null
+                M_HRR=$(mtime_of /proc/HighReportRate)
+                M_GE=$(mtime_of /proc/game_edge)
+                M_RT=$(mtime_of /proc/report_threshold)
+                log "[scan] 游戏内 HRR 掉档已恢复 HRR=$(cat /proc/HighReportRate 2>/dev/null) GE=$(cat /proc/game_edge 2>/dev/null) RT=$(cat /proc/report_threshold 2>/dev/null)"
+            fi
         fi
     fi
-    # ===== 非游戏场景(来电/滑出游戏/桌面): 完全放手 =====
-    # 系统"退出游戏配置"序列完整执行, IC状态一致, 触控正常
 done

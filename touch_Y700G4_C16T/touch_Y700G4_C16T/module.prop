@@ -1,7 +1,7 @@
 id=touch_Y700G4_C16T
 name=touch_Y700G4_C16T (单触控版)
-version=v4.0-clean
-versionCode=403
-author=骏冲冲
-description=单触控版：直控Novatek触控IC，360Hz高采样、游戏模式、低延迟、120/144/165帧率切换、写一次开机即生效（已停用守护）。v4.0-clean：源码首次入库，KSU Manager 云端更新通道启用。
+version=v4.1
+versionCode=4100
+author=嘟嘟ski & 骏冲冲
+description=Y700四代 ColorOS16 触控优化: 360Hz高采样/低延迟/防误触关闭, mtime零打扰守护防掉档, 不碰调频。
 updateJson=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main/touch_Y700G4_C16T/touch_Y700G4_C16T/touch_update.json
