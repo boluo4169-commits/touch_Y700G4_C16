@@ -1,16 +1,22 @@
 #!/system/bin/sh
 # ============================================================
-# Extreme GT 4.2.1 本机适配版 (联想Y700 G4 / SM8750P sun平台)
-# 基于真机实测: 2026-08-23 遍历88个thermal zone确认类型命名
-# 与原版差异:
-#   1. zone匹配改为本机实际类型名(battery/usb/ap-therm等)
-#   2. 新增 stop horae (实测 init.svc.horae=running, 原版只写属性停不掉)
-#   3. 删除本机不存在的 /proc/shell-temp 和 oplus-votable 段
+# Extreme GT 4.2.1 — Y700G4 (SM8750P/sun) ColorOS16 移植版 温区伪装
+# 基于真机实测 (2026-08-29): 131 个 thermal_zone 中 88 个支持 emul_temp,
+# 温区类型名已逐一枚举确认, 与一加原版(pm8550_gpio03_usr/batt-therm/
+# board_temp/shell* 等)完全不同, 原版在本机一个都匹配不上。
+#
+# 原版本机失效节点已删除:
+#   - /proc/shell-temp        (本机不存在)
+#   - /proc/oplus-votable/*   (本机不存在)
+#   - shell* 温区             (本机不存在)
 # ============================================================
 
 MODDIR=${0%/*}
-T=29500        # 伪装温度 29.5C
-BATT_EMUL=0   # 0=保留电池真实温度(安全兜底)
+T=29500          # 伪装温度 29.5C
+# __BATT_EMUL__ 占位由 build.ps1 按变体注入:
+#   safe(精简版)=0  电池/充电/USB 类温区保持真实温度, 充电保护完整保留
+#   full(完全版)=1  连电池类温区一起伪装 29.5C
+BATT_EMUL=__BATT_EMUL__
 
 for tz in /sys/class/thermal/thermal_zone*; do
   t=$(cat $tz/type 2>/dev/null) || continue
@@ -27,6 +33,7 @@ for tz in /sys/class/thermal/thermal_zone*; do
   esac
 done
 
-# 关闭 OPPO 智能温控服务 horae (实测本机 running)
+# 关闭 OPPO 智能温控服务 horae
+# (本机实测 init.svc.horae=running 时仅写属性停不掉, 必须 stop)
 stop horae 2>/dev/null
 setprop persist.sys.horae.enable 0
