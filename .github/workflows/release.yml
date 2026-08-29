@@ -15,21 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Determine version tag
-        id: tag
-        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Build touch_Y700G4_C16T zip
-        run: |
-          cd touch_Y700G4_C16T/touch_Y700G4_C16T
-          zip -r ../../touch_Y700G4_C16T_${GITHUB_REF_NAME}.zip .
-          cd ../..
-
-      - name: Build extreme_gt zip
-        run: |
-          cd extreme_gt
-          zip -r ../extreme_gt_${GITHUB_REF_NAME}.zip .
-          cd ..
+      - name: Build module zips (KSU 格式: module.prop 在 zip 根)
+        run: bash build.sh
 
       - name: List artifacts
         run: ls -la *.zip
@@ -38,8 +25,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            touch_Y700G4_C16T_${{ github.ref_name }}.zip
-            extreme_gt_${{ github.ref_name }}.zip
+            ExtremeGT_4.2.1_Y700G4_C16_safe.zip
+            ExtremeGT_4.2.1_Y700G4_C16_full.zip
+            touch_Y700G4_C16T_v4.1.zip
           generate_release_notes: true
           draft: false
           prerelease: false

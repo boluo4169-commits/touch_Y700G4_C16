@@ -2,37 +2,39 @@
 
 联想拯救者 Y700 第四代（骁龙 8 至尊版 / SM8750P，ColorOS 16 移植版）专用 KernelSU / Magisk 模块集合。
 
-> 🆕 **v4.0-clean 仓库整理版已发布（2026-08-27）**
-> 本次只整理源码、清理 MTK 平台死代码、补全 build/CI 基础设施 —— **不改变任何模块行为**。
-> - extreme_gt：4.2.1-safe → 4.2.1-clean（行为 100% 一致）
-> - touch_Y700G4_C16T：源码首次入库，KSU Manager 云端更新通道启用
-> - KSU Manager 应自动提示更新；如未提示，可在模块页手动 "检查更新"
-
-> ⚠️ **v3.0 二合一模块（touch_Y700G4_C16）已停止维护并移除**，由下面两个独立模块替代。详见 [changelog.md](changelog.md)。
+> 🆕 **v4.1 已发布**
+> - extreme_gt：**单源码双变体**（safe 精简版 / full 完全版），安装时动态生成温控补丁，修复温控降帧表从未生效的挂载缺失，模块自挂载、元模块提示可忽略
+> - touch_Y700G4_C16T：**v4.1 mtime 触发式低打扰守护**，修复游戏中音量键面板卡屏、退出游戏 2~3 秒触控失效、HRR 掉档需重启恢复三个长期问题
+>
+> ⚠️ v3.0 二合一模块（touch_Y700G4_C16）已停止维护并移除。
 
 ## 📦 模块列表
 
-### 1️⃣ touch_Y700G4_C16T — 触控优化单模块 `v3.2T`
+### 1️⃣ touch_Y700G4_C16T — 触控优化 `v4.1`
 
 直控 Novatek 触控芯片，为游戏场景深度调优。
 
-- 🔥 **360Hz 高采样** — 直控触控 IC，游戏内采样率拉满，跟手度显著提升
-- 🛡️ **游戏防断触** — 游戏内断触 2 秒自动兜底；非游戏场景完全放手
-- ⚡ **低延迟** — 关闭系统级触控延迟优化与防误触过滤
+- 🔥 **360Hz 高采样** — 直控触控 IC（HighReportRate / game_edge / report_threshold），游戏内采样率拉满
+- 🛡️ **mtime 零打扰守护** — 每 2 秒纯 stat 轮询节点 mtime（不触 I2C），系统动了触控配置才介入：进游戏校验只写异常节点 / 退出游戏放手+10s 冷却 / 游戏内 30s 兜底扫描
+- ⚡ **低延迟** — 关闭系统级触控延迟优化与防误触过滤，SF 触控定时器归零
 - 📲 在线更新（KSU Manager 一键检查更新）
 
-📄 更新日志：[touch_Y700G4_C16T/changelog.md](touch_Y700G4_C16T/changelog.md)
+📄 更新日志：[touch_Y700G4_C16T/touch_Y700G4_C16T/CHANGELOG.txt](touch_Y700G4_C16T/touch_Y700G4_C16T/CHANGELOG.txt)
 
-### 2️⃣ extreme_gt — Extreme GT 温控适配版 `4.2.1-safe_Y700G4`
+### 2️⃣ extreme_gt — Extreme GT 温控解除 `4.2.1-Y700G4_C16`
 
-基于 SCENE 团队 Extreme GT 4.2.1 的 **Y700G4 真机深度适配版**（作者：嘟嘟ski & 骏冲冲）。
+基于 SCENE 团队 Extreme GT 4.2.1 的 **Y700G4 真机深度适配版**（作者：嘟嘟ski & 骏冲冲）。单源码双变体，安装时从真机分区动态生成全部温控补丁。
 
-**safe 版特性（推荐）：**
-- 🌡️ 伪装外壳/存储类温度传感器（29.5℃），解除系统降频锁帧
-- 🔋 保留电池真实温度兜底，充电保护正常
-- ✅ KernelSU 兼容修复：odm 分区 bind mount 正常挂载（原版在 KSU 下不生效）
+| | safe 精简版 (4211) | full 完全版 (4212) |
+|---|---|---|
+| 外壳/存储/内存温度伪装 29.5℃ | ✅ | ✅ |
+| 电池/充电/USB 温度伪装 | ❌ 真实温度 | ✅ 一并伪装 |
+| 充电高温保护 / 电池温度判定 | 系统原样 | 补丁放开 |
+
+- 🌡️ 真机 88 个温区实测适配（SM8750P / sun 平台），伪装温控传感器解除降频锁帧
+- 🩹 修复 KSU 下温控降帧表 `thermallevel_to_fps.xml`（全 144）从未生效的挂载缺失
+- 🔩 全部补丁文件由模块自身 bind mount 挂载（含 odm），**KSU Manager 的元模块提示直接忽略**
 - 🧹 完整卸载脚本，卸载无痕还原
-- 基于 Y700G4 真机 88 个温区逐一实测适配
 
 📄 更新日志：[extgt_changelog.md](extgt_changelog.md)
 
@@ -45,49 +47,48 @@
 | 系统 | ColorOS 16 移植版 |
 | Root | KernelSU（含 Zygisksu/SUSFS）或 Magisk |
 
-⚠️ 仅限第四代，其他代次硬件方案不同，请勿刷入。Extreme GT 适配件基于真机温控表定制，其他设备刷了无效。
+⚠️ 仅限第四代，其他代次硬件方案不同，请勿刷入。
 
 ## 📲 安装
 
-1. 从 [Releases](https://github.com/boluo4169-commits/touch_Y700G4_C16/releases) 下载 zip：
-   - 触控：`touch_Y700G4_C16T_v3.2T.zip`
-   - 温控：`extreme_gt_safe_y700g4.zip`（安全版）/ `extreme_gt_full_y700g4.zip`（完整版，伪装电池温度）
-2. KSU Manager → 模块 → 从本地安装 → 选择 zip
-3. 重启生效
+从 [Releases](https://github.com/boluo4169-commits/touch_Y700G4_C16/releases) 下载 zip：
 
-两个模块互相独立、可单独使用、可同时使用（推荐搭配）。
+- 触控：`touch_Y700G4_C16T_v4.1.zip`
+- 温控：`ExtremeGT_4.2.1_Y700G4_C16_safe.zip`（日常推荐）/ `ExtremeGT_4.2.1_Y700G4_C16_full.zip`（跑分/极限场景）
+
+KSU Manager → 模块 → 从本地安装 → 重启生效。两个模块互相独立、可同时使用。
+
+> 刷入 extreme_gt 时 KSU Manager 可能提示「需要安装元模块」——**直接忽略**，模块自带 bind mount 挂载逻辑，重启后自动生效。
 
 ### 从 v2.x / v3.0 二合一升级
-
-旧模块已停止维护，请按以下步骤迁移：
 
 1. KSU Manager 中**卸载 touch_Y700G4_C16** 并重启
 2. 分别安装上面两个新模块，再次重启
 
-KSU 内检测更新会直接提示本版本（versionCode 4210）。
+### 从 4.2.1-safe_Y700G4 (4210) / 4.2.1-clean (4220) 升级
 
-## ⚠️ KernelSU 用户须知
-
-刷入 extreme_gt 后，KSU Manager 可能弹出「模块包含系统文件，需要安装元模块」提示——**直接忽略即可，无需安装元模块**。
-
-本模块自带 bind mount 挂载逻辑（已修复 KSU 兼容性），重启后自动生效，可用以下命令自行验证：
-
-```bash
-# 读到 feature_enable=false 即为挂载成功
-grep feature_enable /odm/etc/temperature_profile/sys_thermal_control_config.xml
-```
+直接覆盖刷入对应变体即可（id 相同）。4220 用户因版本号高于新通道，请在 Releases 手动下载。
 
 ## 🔄 更新
 
-- 自动：KSU Manager → 模块 → 检查更新
+- 自动：KSU Manager → 模块 → 检查更新（safe/full/触控各有独立通道）
 - 手动：Releases 下载最新 zip 直接覆盖刷入
 
 ## 🗑️ 卸载
 
 - KSU Manager → 模块 → 移除 → 重启
-- extreme_gt 自带完整卸载脚本：自动清零温度伪装、删除 persist 属性残留，bind mount 随重启自动解除，原版温控 XML 无损还原
+- extreme_gt 卸载脚本自动清零温度伪装、删除 persist 属性残留，bind mount 随重启自动解除
+- touch 卸载脚本自动停守护、清 persist 属性、复位触控节点
+
+## 🛠️ 构建
+
+```bash
+bash build.sh   # 产出三个 zip（CI 与本地通用）
+```
+
+Windows 本地可用 `build.ps1`（仓库外或本目录均可）。
 
 ## 🙏 致谢
 
 - Extreme GT 原作：SCENE 团队 / 嘟嘟ski
-- Y700G4 适配与 KernelSU 兼容修复：骏冲冲（[boluo4169-commits](https://github.com/boluo4169-commits)）
+- Y700G4 适配、KernelSU 兼容修复与 v4.1 守护重构：骏冲冲（[boluo4169-commits](https://github.com/boluo4169-commits)）
