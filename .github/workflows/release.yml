@@ -20,7 +20,16 @@ jobs:
 
       - name: List artifacts
         run: ls -la *.zip
-
+      - name: Extract latest changelog section for release body
+        id: notes
+        run: |
+          # 取 extgt_changelog.md 中第一个 "## " 小节(到下一个小节为止)作为发布说明
+          BODY=$(awk '/^## /{c++} c==1' extgt_changelog.md)
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo "$BODY"
+            echo 'CHANGELOG_EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -28,6 +37,7 @@ jobs:
             ExtremeGT_4.2.2_Y700G4_C16_safe.zip
             ExtremeGT_4.2.2_Y700G4_C16_full.zip
             touch_Y700G4_C16T_v4.1.zip
+          body: ${{ steps.notes.outputs.body }}
           generate_release_notes: true
           draft: false
           prerelease: false
