@@ -2,8 +2,8 @@
 # ============================================================
 # 模块打包脚本 — Extreme GT Y700G4 双变体 + touch v4.1
 # 产出 (KSU 模块格式: module.prop 在 zip 根, 条目无 ./ 前缀):
-#   ExtremeGT_4.2.1_Y700G4_C16_safe.zip
-#   ExtremeGT_4.2.1_Y700G4_C16_full.zip
+#   ExtremeGT_4.2.2_Y700G4_C16_safe.zip
+#   ExtremeGT_4.2.2_Y700G4_C16_full.zip
 #   touch_Y700G4_C16T_v4.1.zip
 # 用法: bash build.sh   (CI 与本地通用; 有 zip 用 zip, 否则回退 bsdtar)
 # ============================================================
@@ -37,19 +37,19 @@ for v in safe full; do
   done
 
   if [ "$v" = safe ]; then
-    batt=0; code=4211; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
+    batt=0; code=4221; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
     desc="Y700四代 ColorOS16 温控解除·精简版: 伪装外壳/存储/内存温度解锁满帧, 电池与充电链路零改动, 真实电池温度+充电保护原样保留。"
   else
-    batt=1; code=4212; namecn="完全版"; upd="$BASE/extgt_update_full.json"
+    batt=1; code=4222; namecn="完全版"; upd="$BASE/extgt_update_full.json"
     desc="Y700四代 ColorOS16 温控解除·完全版: 外壳/存储/内存/电池温度全部伪装29.5C, 彻底解除降频锁帧, 充电高温兜底仍由内核保留。"
   fi
 
   sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|" \
     "$s/service.sh" "$s/customize.sh" "$s/module.prop"
 
-  zip_module "$s" "ExtremeGT_4.2.1_Y700G4_C16_$v.zip" \
+  zip_module "$s" "ExtremeGT_4.2.2_Y700G4_C16_$v.zip" \
     module.prop customize.sh service.sh post-fs-data.sh uninstall.sh system.prop META-INF
-  echo "OK  ExtremeGT_4.2.1_Y700G4_C16_$v.zip"
+  echo "OK  ExtremeGT_4.2.2_Y700G4_C16_$v.zip"
 done
 
 # ---------- touch v4.1 ----------

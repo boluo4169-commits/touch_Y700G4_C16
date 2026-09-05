@@ -7,7 +7,7 @@ SKIPUNZIP=0
 VARIANT=__VARIANT__
 
 # ============================================================
-# Extreme GT 4.2.1 — 联想拯救者 Y700 四代 完全适配版
+# Extreme GT 4.2.2 — 联想拯救者 Y700 四代 完全适配版
 # 目标机型: Y700G4 (SM8750P / sun 平台) 刷 ColorOS 16 移植版
 #
 # 与原版(适配 OPPO/一加 机型)的差异:
@@ -20,6 +20,17 @@ VARIANT=__VARIANT__
 #      由 post-fs-data.sh 显式 bind mount (已加入 vendor 目录)
 #   5. 原版安装期 setprop 的两个 persist 属性移入 system.prop,
 #      避免只写一次、未纳入模块管理
+# ---- 4.2.2 变更 (2026-09-05, Y700G4 实机验证) ----
+#   6. 删除 refresh_rate_config.xml 补丁 (patch_rr_config 函数与
+#      /data/system/refresh_rate_config.xml 分支): 本机刷新率档位
+#      格式为 x-x-x-7 系列, 原 sed 目标 2-2-2-2 永不命中, 且
+#      <record 删除在本机原文件中无匹配, 该补丁仅剩剥注释的
+#      无效副作用; 温控锁帧已由总开关关闭+降帧表锁定双重覆盖
+#   7. thermallevel_to_fps.xml 锁帧 144 -> 165 (Y700G4 面板支持
+#      30-165Hz, 永不降帧更彻底)
+#   8. module.prop 模板补上 updateJson=__UPDJSON__ (此前模板缺失
+#      该行导致构建注入无目标, 4.2.1 全部存量包收不到 KSU
+#      Manager 更新提示, 自动更新通道形同虚设)
 # ============================================================
 
 SRC=$MODPATH
@@ -102,32 +113,12 @@ ToleranceStart=480
 ToleranceStop=460"
 fi
 
-patch_rr_config(){
-  rr_config=$1
-  sed -i 's/<!--.*-->//' "$rr_config"
-  sed -i '/<item.*2-2-2-2.*\/>/d' $rr_config
-  sed -i 's/2-2-2-2/0-0-0-0/' $rr_config
-  sed -i '/<record/d' $rr_config
-}
-
-# refresh_rate_config.xml — 解除温控锁帧档位
-for file in $(find $dirs -name "refresh_rate_config.xml"); do
-  mkdir -p $(dirname $module$file)
-  cp -fp "$file" "$module$file"
-  patch_rr_config "$module$file"
-done
-rr_config=/data/system/refresh_rate_config.xml
-if [[ -f $rr_config ]]; then
-  cp -f $rr_config $rr_config.bak
-  patch_rr_config $rr_config
-fi
-
-# thermallevel_to_fps.xml — 温控降帧表全部拉满 144
+# thermallevel_to_fps.xml — 温控降帧表全部拉满 165 (Y700G4 面板 30-165Hz)
 for file in $(find $dirs -name "thermallevel_to_fps.xml")
 do
   mkdir -p $(dirname $module$file)
   cp -fp "$file" "$module$file"
-  sed -i "s/fps=\"[0-9]*\"/fps=\"144\"/" $module$file
+  sed -i "s/fps=\"[0-9]*\"/fps=\"165\"/" $module$file
 done
 
 # sys_resolution_switch_config.xml — 清空按应用的分辨率切换配置

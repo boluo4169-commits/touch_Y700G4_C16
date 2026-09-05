@@ -1,7 +1,8 @@
 id=extreme_gt
 name=Extreme GT (Y700G4 __NAME_CN__)
-version=4.2.1-Y700G4_C16-__VARIANT__
+version=4.2.2-Y700G4_C16-__VARIANT__
 versionCode=__VERSIONCODE__
 author=嘟嘟ski & 骏冲冲
 description=__DESC__
+updateJson=__UPDJSON__
 minMagisk=17000
