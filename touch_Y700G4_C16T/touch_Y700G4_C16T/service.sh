@@ -1,11 +1,12 @@
 #!/system/bin/sh
 # ============================================================
-# 触控优化模块 - service.sh (v4.1)
+# 触控优化模块 - service.sh (v4.2)
 # 通过 /proc 节点直控 Novatek 触控硬件
 # v4.1: 重新启用守护 —— mtime 触发式低打扰方案 (touch_daemon.sh)
 #   v3.3T 曾因"2s 轮询读取经 I2C 干扰 IC"停用守护;
 #   v4.1 改为 stat(mtime) 轮询, 静止期零 I2C 操作,
 #   仅在系统实际触碰过触控配置后才进行 I2C 读/写。
+# v4.2: 修复 config 帧率解析 (toybox grep 无 -P, 原 grep -oP 恒失败)
 # 读取 config 动态适配帧率：fps=120 / 144 / 165
 # ============================================================
 
@@ -14,11 +15,16 @@ LOG_FILE="$MODDIR/apply.log"
 PID_FILE="$MODDIR/daemon.pid"
 
 # 读取配置文件
+# v4.2: toybox grep 不支持 -P, 原 grep -oP 在 Android 上恒失败 =>
+# config 帧率切换功能从未生效(永远落到 144)。改用 sed 解析 + 白名单校验
 CONFIG_FILE="$MODDIR/config"
 TARGET_FPS=144
 if [ -f "$CONFIG_FILE" ]; then
-    TARGET_FPS=$(grep -oP "(?<=fps=)[0-9]+" "$CONFIG_FILE" 2>/dev/null || echo 144)
-    [ -z "$TARGET_FPS" ] && TARGET_FPS=144
+    TARGET_FPS=$(sed -n "s/^fps=//p" "$CONFIG_FILE" 2>/dev/null | head -n 1)
+    case "$TARGET_FPS" in
+        120|144|165) ;;
+        *) TARGET_FPS=144 ;;
+    esac
 fi
 
 RESETPROP="/data/adb/ksu/bin/resetprop"
@@ -30,7 +36,7 @@ until [ "$(getprop sys.boot_completed)" = "1" ]; do
 done
 sleep 10
 
-echo "$(date): ========== touch_Y700G4_C16T v4.1 start (fps=${TARGET_FPS}) ==========" > "$LOG_FILE"
+echo "$(date): ========== touch_Y700G4_C16T v4.2 start (fps=${TARGET_FPS}) ==========" > "$LOG_FILE"
 
 # ============================================================
 # 统一写入函数

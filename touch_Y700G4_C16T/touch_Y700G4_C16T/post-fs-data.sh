@@ -7,18 +7,23 @@
 MODDIR=${0%/*}
 
 # 读取配置文件
+# v4.2: toybox grep 不支持 -P, 原 grep -oP 恒失败 => 帧率档位从不生效,
+# 改用 sed 解析 + 白名单校验 (120/144/165 之外回退 144)
 CONFIG_FILE="$MODDIR/config"
 TARGET_FPS=144
 if [ -f "$CONFIG_FILE" ]; then
-    TARGET_FPS=$(grep -oP "(?<=fps=)[0-9]+" "$CONFIG_FILE" 2>/dev/null || echo 144)
-    [ -z "$TARGET_FPS" ] && TARGET_FPS=144
+    TARGET_FPS=$(sed -n "s/^fps=//p" "$CONFIG_FILE" 2>/dev/null | head -n 1)
+    case "$TARGET_FPS" in
+        120|144|165) ;;
+        *) TARGET_FPS=144 ;;
+    esac
 fi
 
 RESETPROP="/data/adb/ksu/bin/resetprop"
 [ ! -x "$RESETPROP" ] && RESETPROP="resetprop"
 
 LOG_FILE="$MODDIR/apply.log"
-echo "$(date): touch_Y700G4_C16T v4.1 post-fs-data start (fps=${TARGET_FPS})" > "$LOG_FILE"
+echo "$(date): touch_Y700G4_C16T v4.2 post-fs-data start (fps=${TARGET_FPS})" > "$LOG_FILE"
 
 # === ro 属性（帧率覆写） ===
 $RESETPROP ro.surface_flinger.game_default_frame_rate_override "$TARGET_FPS"

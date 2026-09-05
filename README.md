@@ -4,19 +4,20 @@
 
 > 🆕 **v4.2 已发布**（extreme_gt 更新至 4.2.2）
 > - extreme_gt：**4.2.2** 移除无效 refresh_rate 补丁、温控降帧表锁帧 144→165（面板 30-165Hz）、修复自动更新通道缺失（存量 4.2.1 用户请从 Releases 手动覆盖刷入一次，见下文升级说明）
-> - touch_Y700G4_C16T：**v4.1 mtime 触发式低打扰守护**，修复游戏中音量键面板卡屏、退出游戏 2~3 秒触控失效、HRR 掉档需重启恢复三个长期问题
+> - touch_Y700G4_C16T：**v4.2** 修复 config 帧率切换失效（Android toybox grep 无 `-P`，三档 fps 从未真正生效），mtime 触发式低打扰守护，修复游戏中音量键面板卡屏、退出游戏 2~3 秒触控失效、HRR 掉档需重启恢复三个长期问题
 >
 > ⚠️ v3.0 二合一模块（touch_Y700G4_C16）已停止维护并移除。
 
 ## 📦 模块列表
 
-### 1️⃣ touch_Y700G4_C16T — 触控优化 `v4.1`
+### 1️⃣ touch_Y700G4_C16T — 触控优化 `v4.2`
 
 直控 Novatek 触控芯片，为游戏场景深度调优。
 
 - 🔥 **360Hz 高采样** — 直控触控 IC（HighReportRate / game_edge / report_threshold），游戏内采样率拉满
 - 🛡️ **mtime 零打扰守护** — 每 2 秒纯 stat 轮询节点 mtime（不触 I2C），系统动了触控配置才介入：进游戏校验只写异常节点 / 退出游戏放手+10s 冷却 / 游戏内 30s 兜底扫描
 - ⚡ **低延迟** — 关闭系统级触控延迟优化与防误触过滤，SF 触控定时器归零
+- 🎚️ **config 帧率切换** — 模块目录 config 中 `fps=120 / 144 / 165` 三档可切，v4.2 起真正生效（非法值自动回退 144）
 - 📲 在线更新（KSU Manager 一键检查更新）
 
 📄 更新日志：[touch_Y700G4_C16T/touch_Y700G4_C16T/CHANGELOG.txt](touch_Y700G4_C16T/touch_Y700G4_C16T/CHANGELOG.txt)
@@ -53,7 +54,7 @@
 
 从 [Releases](https://github.com/boluo4169-commits/touch_Y700G4_C16/releases) 下载 zip：
 
-- 触控：`touch_Y700G4_C16T_v4.1.zip`
+- 触控：`touch_Y700G4_C16T_v4.2.zip`
 - 温控：`ExtremeGT_4.2.2_Y700G4_C16_safe.zip`（日常推荐）/ `ExtremeGT_4.2.2_Y700G4_C16_full.zip`（跑分/极限场景）
 
 KSU Manager → 模块 → 从本地安装 → 重启生效。两个模块互相独立、可同时使用。
