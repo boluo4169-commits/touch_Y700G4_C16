@@ -121,6 +121,30 @@ do
   sed -i "s/fps=\"[0-9]*\"/fps=\"165\"/" $module$file
 done
 
+# thermal-engine_cpu_0.conf — CPU 限频档位阈值整体 +7C (5.0 新增)
+#   背景: thermal-engine-v2 直读 TSENS, 不经温区伪装层; quiet-therm(外壳近旁)
+#   游戏内实测 43-48C, 原 T0/T1(43/45C) 常驻触发把大核压到 2.84G
+#   (实测 2026-09-08: clamp 4320->2841MHz 与 THERM_CLUSTER-1_0 精确吻合)。
+#   改动: 六档触发/解除温度 +7C, 限频梯度值与 60/62C 深度兜底(cpu_4.conf)保留。
+#   锚定行首 set_point / set_point_clr, 不触碰频率值; 大小核两集群统一生效。
+for file in $(find $dirs -name "thermal-engine_cpu_0.conf")
+do
+  mkdir -p $(dirname $module$file)
+  cp -fp "$file" "$module$file"
+  sed -E \
+    -e 's/^(set_point[[:space:]]+)43000/\150000/' \
+    -e 's/^(set_point[[:space:]]+)45000/\152000/' \
+    -e 's/^(set_point[[:space:]]+)47000/\154000/' \
+    -e 's/^(set_point[[:space:]]+)49000/\156000/' \
+    -e 's/^(set_point[[:space:]]+)51000/\158000/' \
+    -e 's/^(set_point_clr[[:space:]]+)41000/\148000/' \
+    -e 's/^(set_point_clr[[:space:]]+)43000/\150000/' \
+    -e 's/^(set_point_clr[[:space:]]+)45000/\152000/' \
+    -e 's/^(set_point_clr[[:space:]]+)47000/\154000/' \
+    -e 's/^(set_point_clr[[:space:]]+)49000/\156000/' \
+    "$module$file"
+done
+
 # sys_resolution_switch_config.xml — 清空按应用的分辨率切换配置
 for file in $(find $dirs -name "sys_resolution_switch_config.xml")
 do

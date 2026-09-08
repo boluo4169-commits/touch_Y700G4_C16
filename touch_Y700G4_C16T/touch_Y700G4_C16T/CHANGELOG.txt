@@ -1,5 +1,10 @@
 touch_Y700G4_C16T (单触控版) 更新日志
 ========================================
+【v5.0】版本对齐同页发布 + 署名修正
+- module.prop 署名修正: author 原「嘟嘟ski & 骏冲冲」为温控模块骨架复制残留,
+  本模块为自制独立模块, 修正为「骏冲冲」
+- 版本号与温控模块(extreme_gt 5.0)对齐同页发布, versionCode 4200->5000
+- 触控功能零改动: 守护/节点写入/帧率解析与 v4.2 完全一致
 【v4.2】修复 config 帧率切换从未生效
 - 修复：service.sh / post-fs-data.sh 解析 config 用的是 `grep -oP`
   （Perl 正则），Android toybox 的 grep 不支持 -P，命令恒失败后
