@@ -34,8 +34,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ExtremeGT_5.0_Y700G4_C16_safe.zip
-            ExtremeGT_5.0_Y700G4_C16_full.zip
+            ExtremeGT_5.0.1_Y700G4_C16_safe.zip
+            ExtremeGT_5.0.1_Y700G4_C16_full.zip
             touch_Y700G4_C16T_v5.0.zip
           body: ${{ steps.notes.outputs.body }}
           generate_release_notes: true

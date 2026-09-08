@@ -131,17 +131,18 @@ for file in $(find $dirs -name "thermal-engine_cpu_0.conf")
 do
   mkdir -p $(dirname $module$file)
   cp -fp "$file" "$module$file"
-  sed -E \
-    -e 's/^(set_point[[:space:]]+)43000/\150000/' \
-    -e 's/^(set_point[[:space:]]+)45000/\152000/' \
-    -e 's/^(set_point[[:space:]]+)47000/\154000/' \
-    -e 's/^(set_point[[:space:]]+)49000/\156000/' \
-    -e 's/^(set_point[[:space:]]+)51000/\158000/' \
-    -e 's/^(set_point_clr[[:space:]]+)41000/\148000/' \
-    -e 's/^(set_point_clr[[:space:]]+)43000/\150000/' \
-    -e 's/^(set_point_clr[[:space:]]+)45000/\152000/' \
-    -e 's/^(set_point_clr[[:space:]]+)47000/\154000/' \
-    -e 's/^(set_point_clr[[:space:]]+)49000/\156000/' \
+  # 注意: 整行字面替换, 不用反向引用(\\1+数字在 busybox sed 下解析歧义, 安装期曾静默失败)
+  sed -i \
+    -e 's/^set_point[[:space:]]\{1,\}43000/set_point          50000/' \
+    -e 's/^set_point[[:space:]]\{1,\}45000/set_point          52000/' \
+    -e 's/^set_point[[:space:]]\{1,\}47000/set_point          54000/' \
+    -e 's/^set_point[[:space:]]\{1,\}49000/set_point          56000/' \
+    -e 's/^set_point[[:space:]]\{1,\}51000/set_point          58000/' \
+    -e 's/^set_point_clr[[:space:]]\{1,\}41000/set_point_clr      48000/' \
+    -e 's/^set_point_clr[[:space:]]\{1,\}43000/set_point_clr      50000/' \
+    -e 's/^set_point_clr[[:space:]]\{1,\}45000/set_point_clr      52000/' \
+    -e 's/^set_point_clr[[:space:]]\{1,\}47000/set_point_clr      54000/' \
+    -e 's/^set_point_clr[[:space:]]\{1,\}49000/set_point_clr      56000/' \
     "$module$file"
 done
 

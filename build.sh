@@ -37,18 +37,18 @@ for v in safe full; do
   done
 
   if [ "$v" = safe ]; then
-    batt=0; code=5001; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
+    batt=0; code=5003; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
     desc="Y700四代 ColorOS16 温控解除·精简版 5.0: 温区伪装解锁满帧 + CPU限频档位阈值+7C(thermal-engine直读TSENS不受温区伪装影响, 实测游戏内43C档常驻压大核至2.84G), 电池与充电链路零改动, 充电保护原样保留。"
   else
-    batt=1; code=5002; namecn="完全版"; upd="$BASE/extgt_update_full.json"
+    batt=1; code=5004; namecn="完全版"; upd="$BASE/extgt_update_full.json"
     desc="Y700四代 ColorOS16 温控解除·完全版 5.0: 外壳/存储/内存/电池温度全部伪装29.5C + CPU限频档位阈值+7C, 彻底解除降频锁帧, 重度发热梯度限频与60C+深度兜底保留。"
   fi
   sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|" \
     "$s/service.sh" "$s/customize.sh" "$s/module.prop"
 
-  zip_module "$s" "ExtremeGT_5.0_Y700G4_C16_$v.zip" \
+  zip_module "$s" "ExtremeGT_5.0.1_Y700G4_C16_$v.zip" \
     module.prop customize.sh service.sh post-fs-data.sh uninstall.sh system.prop META-INF
-  echo "OK  ExtremeGT_5.0_Y700G4_C16_$v.zip"
+  echo "OK  ExtremeGT_5.0.1_Y700G4_C16_$v.zip"
 done
 # ---------- touch v5.0 (author 修正 + 版本对齐) ----------
 t="$STAGE/touch"
