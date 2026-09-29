@@ -86,10 +86,10 @@ for v in safe full; do
 
   if [ "$v" = safe ]; then
     batt=0; code=5201; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
-    desc="Y700四代 ColorOS16 温控解除·精简版 5.2: 表面/外壳温区跟随式伪装(修复旧版恒定29.5C导致温度无上限上升); 5.2 修复 lcm-thermal 被写成 skin_max 上限(61C)而伪造面板过热、触发 vendor 背光保护导致游戏时突然降亮度 —— 现将 lcm-thermal 移出伪装列表, 背光保护改由真实面板温度决定。含哨兵值防护/61C写入上限/守护健壮性加固。CPU限频阈值+7C, 电池充电链路零改动。"
+    desc="Y700四代 ColorOS16 温控解除·精简版 5.2: 外壳温区跟随式伪装修复温度无上限上升; 修复游戏时突然降亮度。CPU限频阈值+7C, 电池链路零改动。"
   else
     batt=1; code=5202; namecn="完全版"; upd="$BASE/extgt_update_full.json"
-    desc="Y700四代 ColorOS16 温控解除·完全版 5.2: 跟随式外壳伪装 + 5.2 修复 lcm-thermal 伪造面板过热导致游戏降亮度(已移出伪装列表) + 电池温度伪装29.5C + CPU限频阈值+7C; 含哨兵值防护、61C写入上限与守护健壮性加固。"
+    desc="Y700四代 ColorOS16 温控解除·完全版 5.2: 外壳温区跟随式伪装 + 电池温度伪装29.5C + CPU限频阈值+7C; 修复游戏时突然降亮度。"
   fi
   sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|" \
     "$s/service.sh" "$s/customize.sh" "$s/module.prop"
