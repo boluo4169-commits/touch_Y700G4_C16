@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ============================================================
-# 模块打包脚本 — Extreme GT Y700G4 双变体 + touch v4.1
+# 模块打包脚本 — Extreme GT Y700G4 双变体 + touch
 # 产出 (KSU 模块格式: module.prop 在 zip 根, 条目无 ./ 前缀):
-#   ExtremeGT_4.2.2_Y700G4_C16_safe.zip
-#   ExtremeGT_4.2.2_Y700G4_C16_full.zip
-#   touch_Y700G4_C16T_v4.1.zip
+#   ExtremeGT_5.2_Y700G4_C16_safe.zip
+#   ExtremeGT_5.2_Y700G4_C16_full.zip
+#   touch_Y700G4_C16T_v5.0.1.zip
 # 用法: bash build.sh   (CI 与本地通用; 有 zip 用 zip, 否则回退 bsdtar)
 # ============================================================
 set -euo pipefail
@@ -17,46 +17,98 @@ BASE=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main
 zip_module() { # $1=stage_dir $2=output.zip 其余=打包条目
   local stage="$1" out="$2"; shift 2
   rm -f "$out"
+
+  # 优先 zip（Linux/CI）
   if command -v zip >/dev/null 2>&1; then
     (cd "$stage" && zip -r -q "$OLDPWD/$out" "$@")
-  else
-    tar -a -c -f "$out" -C "$stage" "$@"
+    return 0
   fi
+
+  # 回退 python（Windows/Git Bash 通用，产出的仍是标准 zip）
+  # 注意：不要用 `tar -a -f out.zip` —— GNU tar 不支持 zip 输出，
+  # 只会生成「名字叫 .zip 的 tar」，KSU Manager 无法安装。
+  local py=""
+  command -v python3 >/dev/null 2>&1 && py=python3
+  [ -z "$py" ] && command -v python >/dev/null 2>&1 && py=python
+  if [ -n "$py" ]; then
+    cat > "$STAGE/_mkzip.py" <<'PYEOF'
+import os, sys, zipfile
+out = sys.argv[1]
+z = zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED)
+for root in sys.argv[2:]:
+    if os.path.isdir(root):
+        for dp, _dn, fn in os.walk(root):
+            for f in sorted(fn):
+                p = os.path.join(dp, f)
+                z.write(p, os.path.relpath(p, "."))
+    elif os.path.exists(root):
+        z.write(root, root)
+z.close()
+PYEOF
+    (cd "$stage" && "$py" "$STAGE/_mkzip.py" "$OLDPWD/$out" "$@")
+    return 0
+  fi
+
+  echo "ERROR: 未找到 zip 或 python，无法生成合法 zip" >&2
+  return 1
 }
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
+
+# ---------- 静态检查 ----------
+# 检查 shell 关键字是否被"粘"在上一行末尾（如 `echo x >> f`else ）。
+# 这类错误 bash -n 查不出来 —— 它语法合法，但会把 else 当成重定向目标名，
+# 导致整个分支被并入 if，属于静默逻辑损坏。5.1.1/5.1.2 曾因此踩坑。
+lint_glued_keywords() { # $1 = 待检查目录
+  local bad=0 f hits
+  for f in "$1"/*.sh; do
+    [ -f "$f" ] || continue
+    hits=$(grep -nE '[^[:space:]#;|&](else|then|fi|do|done|esac)[[:space:]]*$' "$f" 2>/dev/null \
+           | grep -vE '^[0-9]+:[[:space:]]*#' || true)
+    if [ -n "$hits" ]; then
+      echo "❌ LINT FAIL: $f 存在被粘连的 shell 关键字（缺少换行）:" >&2
+      echo "$hits" >&2
+      bad=1
+    fi
+  done
+  return $bad
+}
 
 # ---------- extreme_gt: safe / full 双变体 ----------
 for v in safe full; do
   s="$STAGE/extreme_gt_$v"
   mkdir -p "$s"
   cp -r "$EG/META-INF" "$s"
-  for f in customize.sh service.sh post-fs-data.sh uninstall.sh system.prop module.prop; do
+  for f in customize.sh service.sh post-fs-data.sh uninstall.sh system.prop module.prop skin_daemon.sh config; do
     cp "$EG/$f" "$s"
   done
 
   if [ "$v" = safe ]; then
-    batt=0; code=5003; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
-    desc="Y700四代 ColorOS16 温控解除·精简版 5.0: 温区伪装解锁满帧 + CPU限频档位阈值+7C(thermal-engine直读TSENS不受温区伪装影响, 实测游戏内43C档常驻压大核至2.84G), 电池与充电链路零改动, 充电保护原样保留。"
+    batt=0; code=5201; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
+    desc="Y700四代 ColorOS16 温控解除·精简版 5.2: 表面/外壳温区跟随式伪装(修复旧版恒定29.5C导致温度无上限上升); 5.2 修复 lcm-thermal 被写成 skin_max 上限(61C)而伪造面板过热、触发 vendor 背光保护导致游戏时突然降亮度 —— 现将 lcm-thermal 移出伪装列表, 背光保护改由真实面板温度决定。含哨兵值防护/61C写入上限/守护健壮性加固。CPU限频阈值+7C, 电池充电链路零改动。"
   else
-    batt=1; code=5004; namecn="完全版"; upd="$BASE/extgt_update_full.json"
-    desc="Y700四代 ColorOS16 温控解除·完全版 5.0: 外壳/存储/内存/电池温度全部伪装29.5C + CPU限频档位阈值+7C, 彻底解除降频锁帧, 重度发热梯度限频与60C+深度兜底保留。"
+    batt=1; code=5202; namecn="完全版"; upd="$BASE/extgt_update_full.json"
+    desc="Y700四代 ColorOS16 温控解除·完全版 5.2: 跟随式外壳伪装 + 5.2 修复 lcm-thermal 伪造面板过热导致游戏降亮度(已移出伪装列表) + 电池温度伪装29.5C + CPU限频阈值+7C; 含哨兵值防护、61C写入上限与守护健壮性加固。"
   fi
   sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|" \
     "$s/service.sh" "$s/customize.sh" "$s/module.prop"
 
-  zip_module "$s" "ExtremeGT_5.0.1_Y700G4_C16_$v.zip" \
-    module.prop customize.sh service.sh post-fs-data.sh uninstall.sh system.prop META-INF
-  echo "OK  ExtremeGT_5.0.1_Y700G4_C16_$v.zip"
+  # 先做静态检查，通过才打包
+  lint_glued_keywords "$s" || exit 1
+
+  zip_module "$s" "ExtremeGT_5.2_Y700G4_C16_$v.zip" \
+    module.prop customize.sh service.sh post-fs-data.sh uninstall.sh system.prop skin_daemon.sh config META-INF
+  echo "OK  ExtremeGT_5.2_Y700G4_C16_$v.zip"
 done
-# ---------- touch v5.0 (author 修正 + 版本对齐) ----------
+# ---------- touch v5.0.1 (日志版本号动态化) ----------
 t="$STAGE/touch"
 mkdir -p "$t"
 for f in module.prop service.sh post-fs-data.sh touch_daemon.sh config system.prop uninstall.sh CHANGELOG.txt; do
   cp "$TC/$f" "$t"
 done
 cp -r "$TC/META-INF" "$t"
-zip_module "$t" "touch_Y700G4_C16T_v5.0.zip" \
+lint_glued_keywords "$t" || exit 1
+zip_module "$t" "touch_Y700G4_C16T_v5.0.1.zip" \
   module.prop service.sh post-fs-data.sh touch_daemon.sh config system.prop uninstall.sh CHANGELOG.txt META-INF
-echo "OK  touch_Y700G4_C16T_v5.0.zip"
+echo "OK  touch_Y700G4_C16T_v5.0.1.zip"

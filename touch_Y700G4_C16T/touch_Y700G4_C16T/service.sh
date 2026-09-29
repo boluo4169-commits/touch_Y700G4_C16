@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # ============================================================
-# 触控优化模块 - service.sh (v4.2)
+# 触控优化模块 - service.sh
 # 通过 /proc 节点直控 Novatek 触控硬件
 # v4.1: 重新启用守护 —— mtime 触发式低打扰方案 (touch_daemon.sh)
 #   v3.3T 曾因"2s 轮询读取经 I2C 干扰 IC"停用守护;
@@ -8,11 +8,17 @@
 #   仅在系统实际触碰过触控配置后才进行 I2C 读/写。
 # v4.2: 修复 config 帧率解析 (toybox grep 无 -P, 原 grep -oP 恒失败)
 # 读取 config 动态适配帧率：fps=120 / 144 / 165
+# v5.0.1: 日志中的版本号改为从 module.prop 动态读取(此前写死 v4.2/v4.1 与实际不符)
 # ============================================================
 
 MODDIR=${0%/*}
 LOG_FILE="$MODDIR/apply.log"
 PID_FILE="$MODDIR/daemon.pid"
+
+# 版本号从 module.prop 动态读取 —— 避免日志与版本号漂移
+# (此前日志里写死 v4.2/v4.1, 而模块实际是 v5.0)
+VER=$(sed -n 's/^version=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)
+[ -z "$VER" ] && VER="unknown"
 
 # 读取配置文件
 # v4.2: toybox grep 不支持 -P, 原 grep -oP 在 Android 上恒失败 =>
@@ -36,7 +42,7 @@ until [ "$(getprop sys.boot_completed)" = "1" ]; do
 done
 sleep 10
 
-echo "$(date): ========== touch_Y700G4_C16T v4.2 start (fps=${TARGET_FPS}) ==========" > "$LOG_FILE"
+echo "$(date): ========== touch_Y700G4_C16T ${VER} start (fps=${TARGET_FPS}) ==========" > "$LOG_FILE"
 
 # ============================================================
 # 统一写入函数
@@ -115,7 +121,7 @@ if [ -f /proc/HighReportRate ] && [ -f "$TOUCH_DAEMON" ]; then
     # 防重复启动 (模块更新后未重启又重跑 service 的情况)
     pkill -f touch_daemon.sh 2>/dev/null
     setsid "$TOUCH_DAEMON" >/dev/null 2>&1 &
-    echo "$(date): v4.1 mtime 守护已启动 (pid=$!)" >> "$LOG_FILE"
+    echo "$(date): ${VER} mtime 守护已启动 (pid=$!)" >> "$LOG_FILE"
 else
     echo "$(date): 触控节点/守护脚本缺失, 守护不启动" >> "$LOG_FILE"
 fi
