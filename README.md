@@ -2,17 +2,12 @@
 
 联想拯救者 Y700 第四代（骁龙 8 至尊版 / SM8750P，ColorOS 16 移植版）专用 KernelSU / Magisk 模块集合。
 
-> 🆕 **v5.2 已发布**（extreme_gt 5.2；touch_Y700G4_C16T v5.0.1）
-> - extreme_gt：**5.2** 修复「打游戏时屏幕突然变暗」——`lcm-thermal`（面板温度）原先在伪装列表里，
->   跟随式伪装在高热时把它写成 `skin_max` 上限 61℃，**越过了 vendor 背光保护阈值 55℃**，
->   等于伪造面板过热 → thermal-engine 把背光压到约 70%。现已**移出伪装列表**，背光保护改由真实面板温度决定。
-> - extreme_gt 5.1.x：旧版把外壳温区**恒定**伪装成 29.5℃，而框架 skin 限频阈值是 `[48,49,50,60,61,90]℃`，
->   恒定值永远够不到，等于把闭环输入整条掐断（**重度使用后温度只升不降、熄屏仍发热**）。
->   现为**跟随式伪装**：伪装值随真实硅温同步抬升，平时不降频、重度发热自动恢复降温。
->   详见 [extgt_changelog.md](extgt_changelog.md)。
-> - touch_Y700G4_C16T：**v5.0.1** 日志版本号改为动态读取（此前写死 v4.2），**触控功能零改动**
-> - ⚠️ **请勿使用 5.1**：该版存在开机即热关机的缺陷，已撤回。请直接用 5.2。
-> - ⚠️ v3.0 二合一模块（touch_Y700G4_C16）已停止维护并移除。
+> **v5.2 已发布**（extreme_gt 5.2；touch_Y700G4_C16T v5.0.1）
+> - extreme_gt 5.2 修掉了「打游戏时突然降频（屏幕变暗）」。原因有点意外，是我们自己干的：`lcm-thermal`（面板温度）原先在伪装列表里，跟随式伪装在高热时把它写成 `skin_max` 上限 61℃，越过了 vendor 背光保护阈值 55℃，等于伪造面板过热，thermal-engine 就把背光压到约 70%。现在把它移出伪装列表，背光保护改由真实面板温度决定。
+> - 再往前，extreme_gt 5.1.x 修的是另一个问题：旧版把外壳温区恒定伪装成 29.5℃，而框架 skin 限频阈值是 `[48,49,50,60,61,90]℃`，恒定值永远够不到，等于把闭环输入整条掐断，重度使用后温度只升不降、熄屏仍发热。现在是跟随式伪装：伪装值随真实硅温同步抬升，平时不降频，重度发热自动恢复降温。详见 [extgt_changelog.md](extgt_changelog.md)。
+> - touch_Y700G4_C16T v5.0.1 只是把日志里的版本号改成动态读取（此前写死 v4.2），触控功能没动。
+> - 别用 5.1。那版开机就热关机，已撤回，直接用 5.2。
+> - v3.0 二合一模块（touch_Y700G4_C16）已停止维护并移除。
 
 ## 📦 模块列表
 
@@ -40,8 +35,8 @@
 
 - 🌡️ **跟随式皮肤伪装**（5.1.x）— `伪装值 = 真实硅温 − skin_offset`（默认 20℃），
   随真实温度同步抬升；平时低于 48℃ 首档不降频，重度发热时自动跨过 48/49/50/60/61 恢复降温
-- 🖥️ **`lcm-thermal` 不再伪装**（5.2）— 该温区是 vendor 背光保护（`panel0-backlight`，阈值 55℃）的输入，
-  伪装它会伪造面板过热导致游戏时突然降亮度。现改为不伪装，保护基于真实面板温度
+- 🖥️ **`lcm-thermal` 不再伪装**（5.2）— 这个温区是 vendor 背光保护（`panel0-backlight`，阈值 55℃）的输入，
+  伪装它就会伪造面板过热，游戏时突然降频（屏幕变暗）。现在不伪装了，保护基于真实面板温度
 - 🔒 **写入硬上限** — 伪装值绝不高于 `skin_max`（默认 61℃），设计上不可能写出接近 90℃ 的值
 - 🔍 **锚点可信域过滤** — 只接受 15~95℃ 的读数；开机初期部分 TSENS 温区会返回 `105.0℃` 哨兵值（NSP/CPUSS 等掉电状态），超出即弃用该温区
 - 🐕 **守护健壮性**（5.1.4）— `sleep` 失效即退出、速率看门狗检测空转、关机检测、归零退避；
@@ -131,22 +126,21 @@ bash build.sh   # 产出三个 zip（CI 与本地通用）
 
 ## 📌 已知问题
 
-- **`quiet-therm` 仍在伪装列表中，会影响 vendor 的电池充电限制**：`thermal-engine_battery_*.conf`
-  以 `quiet-therm` 为输入（阈值 33~52℃，`actions battery` 共 10 档）。跟随模式下高热时会自动触发
-  **高温限充**（边充边玩会变慢）。这属于正当保护，如需放开需另行评估；
-  原版钉死 29.5℃ 时不会触发
-- **`lcm-thermal` 已于 5.2 移出伪装列表**（见上）。此温区被 vendor 背光保护
-  （`panel0-backlight`，阈值 55℃）依赖，伪装它会伪造面板过热 → 游戏时突然降亮度
-- 根目录 `extgt_update_v4.json` 为历史遗留死文件，可删除
-- 触控模块目录下**外层** `touch_Y700G4_C16T/update.json` 无人引用
+- **`quiet-therm` 还在伪装列表里，会影响 vendor 的电池充电限制**。`thermal-engine_battery_*.conf`
+  把 `quiet-therm` 当输入（阈值 33~52℃，`actions battery` 共 10 档），跟随模式下高热时会自动触发
+  高温限充，边充边玩会变慢。这属于正当保护，如需放开需另行评估。原版钉死 29.5℃ 时不会触发
+- **`lcm-thermal` 已于 5.2 移出伪装列表**（见上）。这个温区被 vendor 背光保护
+  （`panel0-backlight`，阈值 55℃）依赖，伪装它会伪造面板过热，游戏时突然降频（屏幕变暗）
+- 根目录 `extgt_update_v4.json` 是历史遗留死文件，可删除
+- 触控模块目录下的外层 `touch_Y700G4_C16T/update.json` 无人引用
   （`module.prop` 实际引用的是 `touch_Y700G4_C16T/touch_Y700G4_C16T/touch_update.json`）。
   两份内容已于 v5.0.1 一并校正，保留外层文件仅为兼容历史引用
 - 温区统计注释（`service.sh` 历史注释）称「131 个温区 / 88 个支持 emul_temp」，
-  实测为「88 个温区，全部支持」
-- `dumpsys thermalservice` 的 `Cached temperatures` 在本移植 ROM 上数值陈旧/异常
-  （如 CPU6 显示 91.5℃ 而 HAL 直读 37.8℃），属 ROM 既有问题，与模块无关；
-  因此该 ROM 上框架层 `Thermal Status` 阈值不可靠
-- **框架层热亮度节流在本 ROM 上未启用**：`dumpsys display` 中
-  `mThermalBrightnessThrottlingDataMapByThrottlingId={}`（空）。屏幕变暗只可能来自
+  实测是 88 个温区、全部支持
+- `dumpsys thermalservice` 的 `Cached temperatures` 在本移植 ROM 上数值陈旧、异常
+  （比如 CPU6 显示 91.5℃ 而 HAL 直读 37.8℃），属 ROM 既有问题，与模块无关。
+  所以这个 ROM 上框架层 `Thermal Status` 阈值不可靠
+- **框架层热亮度节流在本 ROM 上没启用**。`dumpsys display` 里
+  `mThermalBrightnessThrottlingDataMapByThrottlingId={}` 是空的。屏幕降频（变暗）只可能来自
   vendor 的 `panel0-backlight`（见上）
-- `emul_temp` 权限为 `--w-------`（**只写**），root 也无法读回；验证写入需改看 `temp`
+- `emul_temp` 权限是 `--w-------`（只写），root 也无法读回，验证写入得改看 `temp`

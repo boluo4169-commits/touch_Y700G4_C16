@@ -1,11 +1,12 @@
 # Extreme GT 5.2-Y700G4_C16 更新日志
 > ℹ️ 本模块（id=extreme_gt）与触控模块（id=touch_Y700G4_C16T）互相独立。
 > 若你之前装过旧的二合一模块 touch_Y700G4_C16 或其他温控类模块（如原版 Extreme GT），**请先卸载并重启后再刷入本模块**，避免同类功能冲突。
-## 5.2-Y700G4_C16（versionCode safe=5201 / full=5202，tag v5.2）🚨 游戏时突然降亮度修复
+## 5.2-Y700G4_C16（versionCode safe=5201 / full=5202，tag v5.2）🚨 游戏时突然降频（屏幕变暗）修复
 ### 现象
-打游戏（尤其**游戏内挂小窗刷视频**，双负载产热更高）时，屏幕**没动亮度滑块却突然暗掉一档**，像"降屏"。
+打游戏（尤其游戏内挂小窗刷视频，双负载产热更高）时，屏幕没动亮度滑块却突然暗掉一档。这是屏幕降频，亮度被系统强制压低，不是你手动调下来的。
+
 ### 真机定位
-**执行者是 vendor thermal-engine 的背光保护**（`/vendor/etc/thermal-engine_common_0.conf`）：
+是 vendor thermal-engine 的背光保护在动手，配置在 `/vendor/etc/thermal-engine_common_0.conf`：
 ```
 [LCD-MONITOR]
 algo_type          monitor
@@ -18,7 +19,7 @@ action_info        178              ← 背光压到 178/255 ≈ 70%
 ```
 对应冷却设备实测存在：`/sys/class/thermal/cooling_device35  type=panel0-backlight  max=255`。
 
-**触发源是本模块**——`lcm-thermal` 原先在伪装白名单里，守护把同一个 `fake` 写进所有外壳类温区：
+触发源是本模块自己。`lcm-thermal` 原先在伪装白名单里，守护把同一个 `fake` 写进所有外壳类温区：
 ```
 skin.log（真机）
   20:12:22  real=88.4C -> fake=61.0C     ← 顶到 skin_max 上限
@@ -26,28 +27,24 @@ skin.log（真机）
   20:14:11  real=89.9C  fake=61.0C (unchanged)
 lcm-thermal = 61000                       ← 61℃ > 55℃ 阈值 → 必然触发
 ```
-**即：我们用"硅温 - 20℃"的推导值写进了面板温度传感器，伪造了面板过热**，把 55℃ 的面板保护提前触发，系统于是把背光压到 70%。
+我们把"硅温 - 20℃"的推导值写进了面板温度传感器，伪造出面板过热，把 55℃ 的保护提前触发，系统才把背光压到 70%。
 
-> 原版 5.0.1 把 `lcm-thermal` 恒定写成 29.5℃，永不越 55℃ —— 等于**永久关闭**面板背光保护，所以用户从未见过降亮度。
-> 5.1.x 改为跟随式后，这个被压制的保护被重新激活，且**由伪造值触发**。属 5.1.x 引入的回归。
+原版 5.0.1 把 `lcm-thermal` 恒定写成 29.5℃，永远越不过 55℃，等于永久关掉了面板背光保护，所以用户从没见过降频。5.1.x 改成跟随式之后，这个被压制的保护重新活了过来，而且是被伪造值触发的。这是 5.1.x 引入的回归。
 
-**已排除的其他路径**（避免误判）：
-- 框架层热亮度节流**未启用**：`dumpsys display` 中 `mThermalBrightnessThrottlingDataMapByThrottlingId={}`（空）
-- OPPO 热服务配置（`ThermalServiceConfig`）中**没有任何亮度键**
-- 全 `/vendor /odm /my_product` 配置里，只有 `thermal-engine_common_0/1.conf` 含背光动作
+顺带说下已排除的其他路径，避免误判：
+- 框架层热亮度节流没启用。`dumpsys display` 里 `mThermalBrightnessThrottlingDataMapByThrottlingId={}` 是空的
+- OPPO 热服务配置（`ThermalServiceConfig`）里没有任何亮度键
+- 翻遍 `/vendor /odm /my_product`，只有 `thermal-engine_common_0/1.conf` 含背光动作
 
 ### 本版变更
-- 🔧 **将 `lcm-thermal` 移出伪装白名单**（方案 A）：面板背光保护改为基于**真实面板温度**工作
-  —— 真到 55℃ 才降亮度，属正当保护；不再被本模块的硅温推导值**伪造触发**
-- 📝 `skin_daemon.sh` 中加了显式注释说明**不要加回来**，并连带标注了 `quiet-therm` 的同类依赖
-- ✅ 其余全部不变：跟随式伪装、`skin_max` 61℃ 写入硬上限、哨兵值可信域过滤、异常归零兜底、守护健壮性加固
+- 🔧 把 `lcm-thermal` 移出伪装白名单（方案 A）。面板背光保护改为基于真实面板温度工作，真到 55℃ 才降频，属正当保护，不再被本模块的硅温推导值伪造触发
+- 📝 `skin_daemon.sh` 里加了显式注释，写明不要加回来，并连带标注了 `quiet-therm` 的同类依赖
+- ✅ 其余全部不变。跟随式伪装、`skin_max` 61℃ 写入硬上限、哨兵值可信域过滤、异常归零兜底、守护健壮性加固都在
 ### 已知的连带影响（未改动，供知悉）
-`quiet-therm` 被 vendor 的**电池充电限制**依赖（`thermal-engine_battery_*.conf`，阈值 33~52℃，`actions battery` 共 10 档）。
-它仍在伪装列表中，因此跟随模式下高热时**会自动触发高温限充**（边充边玩会变慢）。
-这属于正当保护，如需放开需另行评估（原版钉死 29.5℃ 时不会触发）。
+`quiet-therm` 被 vendor 的电池充电限制依赖（`thermal-engine_battery_*.conf`，阈值 33~52℃，`actions battery` 共 10 档）。它仍在伪装列表中，跟随模式下高热时会自动触发高温限充，边充边玩会变慢。这属于正当保护，如需放开需另行评估。原版钉死 29.5℃ 时不会触发。
 
 ### 升级方式
-直接覆盖刷入对应变体（`id=extreme_gt` 相同），**重启生效**（重启会清空 emul_temp，`lcm-thermal` 立即恢复真实值）。
+直接覆盖刷入对应变体（`id=extreme_gt` 相同），重启生效。重启会清空 emul_temp，`lcm-thermal` 立即恢复真实值。
 
 ## 5.1.4-Y700G4_C16（versionCode safe=5141 / full=5142，tag v5.1.4）— 守护健壮性加固
 ### 问题（真机复现）
