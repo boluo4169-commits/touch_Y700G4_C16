@@ -2,14 +2,15 @@
 # ============================================================
 # 模块打包脚本 — Extreme GT Y700G4 双变体 + touch
 # 产出 (KSU 模块格式: module.prop 在 zip 根, 条目无 ./ 前缀):
-#   ExtremeGT_5.2_Y700G4_C16_safe.zip
-#   ExtremeGT_5.2_Y700G4_C16_full.zip
-#   touch_Y700G4_C16T_v5.0.1.zip
-# 用法: bash build.sh   (CI 与本地通用; 有 zip 用 zip, 否则回退 bsdtar)
+#   ExtremeGT_5.2.1_Y700G4_C16_safe.zip
+#   ExtremeGT_5.2.1_Y700G4_C16_full.zip
+#   touch_Y700G4_C16T_v5.0.2.zip
+# 用法: bash build.sh   (CI 与本地通用; 有 zip 用 zip, 否则回退 python)
 # ============================================================
 set -euo pipefail
 cd "$(dirname "$0")"
 
+VER=5.2.1               # 模块版本号(唯一改动点, module.prop/zip 名/描述都取这里)
 EG=extreme_gt
 TC=touch_Y700G4_C16T/touch_Y700G4_C16T
 BASE=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main
@@ -85,30 +86,33 @@ for v in safe full; do
   done
 
   if [ "$v" = safe ]; then
-    batt=0; code=5201; namecn="精简版"; upd="$BASE/extgt_update_safe.json"
-    desc="Y700四代 ColorOS16 温控解除·精简版 5.2: 外壳温区跟随式伪装修复温度无上限上升; 修复游戏时突然降亮度。CPU限频阈值+7C, 电池链路零改动。"
+    batt=0; code=5211; namecn="精简版"; upd="$BASE/extgt_update_safe.json"; offset=20
+    desc="Y700四代 ColorOS16 温控解除·精简版 $VER: 外壳温区跟随式伪装修复温度无上限上升; 修复游戏时突然降频(屏幕变暗)。CPU限频阈值+7C, 电池链路零改动。"
   else
-    batt=1; code=5202; namecn="完全版"; upd="$BASE/extgt_update_full.json"
-    desc="Y700四代 ColorOS16 温控解除·完全版 5.2: 外壳温区跟随式伪装 + 电池温度伪装29.5C + CPU限频阈值+7C; 修复游戏时突然降亮度。"
+    batt=1; code=5212; namecn="完全版"; upd="$BASE/extgt_update_full.json"; offset=28
+    desc="Y700四代 ColorOS16 温控解除·完全版 $VER: 外壳温区跟随式伪装(offset 28, 更晚降频) + 电池温度伪装29.5C + CPU限频阈值+7C; 修复游戏时突然降频(屏幕变暗)。"
   fi
-  sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|" \
-    "$s/service.sh" "$s/customize.sh" "$s/module.prop"
+  sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSION__|$VER|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|; s|__SKIN_OFFSET__|$offset|" \
+    "$s/service.sh" "$s/customize.sh" "$s/module.prop" "$s/config"
 
   # 先做静态检查，通过才打包
   lint_glued_keywords "$s" || exit 1
 
-  zip_module "$s" "ExtremeGT_5.2_Y700G4_C16_$v.zip" \
+  zip_module "$s" "ExtremeGT_${VER}_Y700G4_C16_$v.zip" \
     module.prop customize.sh service.sh post-fs-data.sh uninstall.sh system.prop skin_daemon.sh config META-INF
-  echo "OK  ExtremeGT_5.2_Y700G4_C16_$v.zip"
+  echo "OK  ExtremeGT_${VER}_Y700G4_C16_$v.zip"
 done
-# ---------- touch v5.0.1 (日志版本号动态化) ----------
+# ---------- touch v5.0.2 (守护日志版本号也动态化) ----------
+TVER=5.0.2
+TCODE=5002
 t="$STAGE/touch"
 mkdir -p "$t"
 for f in module.prop service.sh post-fs-data.sh touch_daemon.sh config system.prop uninstall.sh CHANGELOG.txt; do
   cp "$TC/$f" "$t"
 done
 cp -r "$TC/META-INF" "$t"
+sed -i "s|__VERSION__|v$TVER|; s|__VERSIONCODE__|$TCODE|" "$t/module.prop"
 lint_glued_keywords "$t" || exit 1
-zip_module "$t" "touch_Y700G4_C16T_v5.0.1.zip" \
+zip_module "$t" "touch_Y700G4_C16T_v$TVER.zip" \
   module.prop service.sh post-fs-data.sh touch_daemon.sh config system.prop uninstall.sh CHANGELOG.txt META-INF
-echo "OK  touch_Y700G4_C16T_v5.0.1.zip"
+echo "OK  touch_Y700G4_C16T_v$TVER.zip"

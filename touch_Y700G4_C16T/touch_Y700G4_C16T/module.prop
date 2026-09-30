@@ -1,7 +1,7 @@
 id=touch_Y700G4_C16T
 name=touch_Y700G4_C16T (单触控版)
-version=v5.0.1
-versionCode=5001
+version=__VERSION__
+versionCode=__VERSIONCODE__
 author=骏冲冲
 description=Y700四代 ColorOS16 触控优化: 360Hz高采样/低延迟/防误触关闭, mtime零打扰守护防掉档, 不碰调频。
 updateJson=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main/touch_Y700G4_C16T/touch_Y700G4_C16T/touch_update.json

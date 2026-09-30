@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # ============================================================
-# touch_daemon.sh v4.1 — mtime 触发式低打扰守护
+# touch_daemon.sh — mtime 触发式低打扰守护（v4.1 起的方案，版本号见 module.prop）
 #
 # 设计原则 (继承 v1.x~v3.3T 全部实测结论, 见仓库旧版注释):
 #   1. 对 IC 的每次 I2C 读/写都是打扰, 静止期必须零 I2C 操作
@@ -30,6 +30,10 @@ MODDIR=$(cd "$(dirname "$0")" && pwd)
 LOG_FILE="$MODDIR/apply.log"
 PID_FILE="$MODDIR/daemon.pid"
 
+# 版本号从 module.prop 动态读取。v5.0.2 之前这里是写死的 v4.1, 日志与实际版本对不上。
+VER=$(sed -n 's/^version=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)
+[ -z "$VER" ] && VER="unknown"
+
 WATCH_INTERVAL=2      # mtime 轮询周期(纯 stat, 零 I2C)
 DEBOUNCE=2            # mtime 变化后的防抖: 等系统配置写入风暴结束再做 I2C 读
 ENTER_SETTLE=3        # 判定进游戏后再等系统配置收敛的秒数
@@ -58,7 +62,7 @@ DEBOUNCE_AT=0      # >0 = mtime 变化后的防抖到期时间点
 VERIFY_AT=0        # >0 = 挂起中的"进游戏校验"时间点
 LAST_SCAN=0
 
-log "[v4.1] mtime 守护启动 interval=${WATCH_INTERVAL}s debounce=${DEBOUNCE}s settle=${ENTER_SETTLE}s cooldown=${EXIT_COOLDOWN}s scan=${SCAN_INTERVAL}s"
+log "[$VER] mtime 守护启动 interval=${WATCH_INTERVAL}s debounce=${DEBOUNCE}s settle=${ENTER_SETTLE}s cooldown=${EXIT_COOLDOWN}s scan=${SCAN_INTERVAL}s"
 
 while true; do
     sleep "$WATCH_INTERVAL"

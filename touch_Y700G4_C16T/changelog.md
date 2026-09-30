@@ -1,5 +1,15 @@
 # touch_Y700G4_C16T 更新日志
 
+## v5.0.2（versionCode 5002）— 守护日志版本号也动态化
+
+- 补 v5.0.1 的漏：`touch_daemon.sh` 的守护启动日志里版本号仍写死为 `[v4.1]`。
+  v5.0.1 只改了 `service.sh` 那一处，漏掉这个文件，结果 `apply.log` 里两行版本对不上
+  （一行 v5.0.1，一行 v4.1）。现改为从 `module.prop` 动态读取，与 `service.sh` 做法一致。
+- 清掉 `CHANGELOG.txt` 里残留的 Markdown 星号，那是纯文本文件，星号会原样显示。
+- 更新通道：`touch_update.json` 与外层 `update.json` 一起改指 v5.2.1 Release 内的
+  `touch_Y700G4_C16T_v5.0.2.zip`（此前指向的路径实际不存在，KSU 能看到版本却下载 404）。
+- 触控功能、守护逻辑、config 行为与 v5.0.1 完全一致，升不升级都不影响使用。
+
 ## v5.0.1（versionCode 5001）— 日志版本号动态化
 
 - 修复 `service.sh` 启动日志与守护启动日志中**写死**的版本号（`v4.2` / `v4.1`），
