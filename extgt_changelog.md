@@ -1,6 +1,39 @@
-# Extreme GT 5.2.1-Y700G4_C16 更新日志
+# Extreme GT 5.2.2-Y700G4_C16 更新日志
 > ℹ️ 本模块（id=extreme_gt）与触控模块（id=touch_Y700G4_C16T）互相独立。
 > 若你之前装过旧的二合一模块 touch_Y700G4_C16 或其他温控类模块（如原版 Extreme GT），**请先卸载并重启后再刷入本模块**，避免同类功能冲突。
+## 5.2.2-Y700G4_C16（versionCode safe=5221 / full=5222，tag v5.2.2）🚨 修复充电被限流
+
+### 这版修什么
+有用户反馈 5.2.1 **充电时一晚上充不满**，换回 5.0.1 就正常。查下来是我们自己干的，责任人还是 `quiet-therm`。
+
+### 根因：`quiet-therm` 是双重身份温区
+1. 它是框架 `skin` 传感器的**唯一来源**（阈值 48/49/50/60/61/90℃）；
+2. 它同时被 **12 份 vendor 策略**读取 —— 4 份 `thermal-engine_battery_*.conf`（电池充电电流）+ 5 份 `cpu_*.conf` + 3 份 `gpu_*.conf`。
+
+跟随式伪装往里写的是 `硅温 − offset`（芯片裸温 die），而这个温区本来代表外壳/板级温度（board）。把 40~55℃ 的假板温塞给充电链路后，thermal-engine 按电池档位限流（真机实测，上限 13 A）：
+
+| 写入 quiet-therm | 30.0℃ | 32 / 34 / 36 / 38℃ | 40–44℃ | 49℃ 以上 |
+|---|---|---|---|---|
+| `charge_control_limit` | 10 A（不限流） | 8 / 6 / 4 / 3 A | 3 A | **0.5 A** |
+
+同一负载下真机复现：伪装生效（61.0℃）→ **0.5 A**；`quiet-therm` 移除后（真实 38.5℃）→ **3.0 A**；空闲充电 10 A。
+5.0.1 恒定写 29.5℃，恰好落在最低档 30℃ 以下，从来没触发过 —— 这就是"换回 5.0.1 就正常"的原因。
+
+### 本版变更
+- 🔌 **`quiet-therm` 移出伪装列表**（与 5.2 处理 `lcm-thermal` 同一思路：被 vendor 策略依赖的温区不能伪装）
+- 🧪 回归测试扩到「依赖温区排除」：`lcm_thermal_exclusion.sh` 与 `variant_offset_check.sh` 都会断言 `lcm-thermal` / `quiet-therm` 不在写入列表
+- 🐕 `skin_daemon_regression.sh`：固定 `sleep` 改轮询（MSYS 下会偶发误判）、探针温区改到 `ap-therm`
+- 🔢 版本号与 offset 仍走构建期占位符，以后改版只动 `build.sh` 顶部一行
+
+### 影响与取舍
+- 移除后框架 `skin`、CPU/GPU 限频、充电限流**全部基于真实板温**工作，闭环一条没拆，不会重演 5.0.1 那种"恒定值掐断负反馈"
+- 代价：模块不再推后**框架层**的降频点。性能收益主要来自 vendor 侧（`thermal-engine_cpu_0.conf` 的 +7℃ 阈值），那部分不受影响
+- 仍在伪装的 13 个温区（`ap-therm` / `front_temp` / `back_temp` / `user_temp` / `user_front_temp` / `user_back_temp` / `flash-led-ntc` / `rear-cam-ntc` / `fcam-ntc` / `wlan-therm` / `xo-therm` / `ufs-therm` / `ddr`）已逐个反查 vendor 配置，**零引用**
+- ⚠️ 顺带记住一个坑：`emul_temp` 写值**不会自愈**。守护被强杀（trap 未执行）时最后写入的值会一直留着 —— 实测出现过 `quiet-therm` 卡在 61000、充电被钉在 0.5A，直到重启
+
+### 适用
+同 5.2.1：Y700 四代 / SM8750P（sun 平台）/ ColorOS 16 移植版。`id` 未变，直接覆盖刷入对应变体后重启。
+
 ## 5.2.1-Y700G4_C16（versionCode safe=5211 / full=5212，tag v5.2.1）完全版把降频点往后挪了
 ### 本版变更
 - 🔧 完全版（full）的跟随偏移量从 20 提到 28。伪装值 = 真实硅温 − 28℃，也就是真实硅温要到 76℃ 左右才开始降频（原来 68℃）。日常刷视频、打游戏基本碰不到这个点。

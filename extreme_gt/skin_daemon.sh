@@ -1,6 +1,6 @@
 #!/system/bin/sh
 # ============================================================
-# Extreme GT Y700G4 — skin_daemon.sh (5.2)
+# Extreme GT Y700G4 — skin_daemon.sh (5.2.2)
 # 表面/外壳温区「跟随式伪装」守护
 #
 # ── 为什么要有这个守护 ──
@@ -25,6 +25,11 @@
 #   3. 速率看门狗: 每 RUNCHECK 轮核对实际耗时, 明显偏快即判定异常并退出
 #   4. 关机检测: sys.shutdown.requested 非空则静默退出
 #   5. invalid 日志节流 + 归零后退避, 避免刷屏与无谓的批量写入
+#
+# ── 5.2.2 关键修复 ──
+# `quiet-therm` 移出伪装列表（细节见 apply_skin 上方注释）：该温区同时供给框架 skin 与
+# 12 份 vendor 策略（含电池充电限流，档位从 30℃ 起、最低压到 0.5A），伪装它会把
+# "硅温 − offset" 的假板温送进充电链路 → 充电被限流（真机复现：0.5A vs 真实 3A）。
 #
 # ── 方案: 跟随式伪装 ──
 #   skin 伪装值 = 真实硅温 - skin_offset, 再夹进 [skin_min, skin_max]
@@ -124,6 +129,20 @@ real_max() {
   echo "$_m"
 }
 
+# ── 5.2.2 关键修复：`quiet-therm` 移出伪装列表 ──
+# 与 lcm-thermal 同一类错误（"被 vendor 策略依赖的温区不能伪装"），但后果更重：
+# 有用户反馈 5.2.1 充电时**一晚上充不满**，换回 5.0.1 即正常。
+# 真机(thermal_zone63)实测：quiet-therm 同时是
+#   ① 框架 `skin` 传感器的唯一来源（阈值 48/49/50/60/61/90℃）
+#   ② 12 份 vendor 策略的输入：4 份 thermal-engine_battery_*.conf + 5 份 cpu + 3 份 gpu
+# 电池那 4 份用它直接决定充电电流上限，档位从 30℃ 起每 2℃ 一档：
+#   30.0℃→10A(不限流)  32/34/36/38℃→8/6/4/3A  40~44℃→3A  49℃以上→0.5A
+# 把"硅温 − offset"写进它会伪造出 43~55℃ 的板温 → 充电电流被压到 3A/0.5A。
+# 5.0.1 恒定 29.5℃ 恰好落在最低档(30.0℃)以下，所以从不受影响。
+# 另注：emul_temp 不会自己回真实值 —— 守护若被 SIGKILL 且 trap 未执行，
+#       最后一次写入的值会一直留着（曾观察到 quiet-therm 卡在 61000 → 充电被钉在 0.5A）。
+# 现改为**不伪装**：框架 skin 与充电链路都基于真实板温工作（闭环保留，不再伪造）。
+#
 # ---- 写入表面/外壳类温区 ----
 #
 # ⚠️ 5.2：`lcm-thermal` 已从本列表移除，**不要加回来**。
@@ -136,9 +155,8 @@ real_max() {
 #    原版钉死 29.5℃ 虽压制了该保护，但至少不会主动误触发。
 #    现改为**不伪装**，让背光保护基于真实面板温度工作（真到 55℃ 才降频(屏幕变暗)，属正当保护）。
 #
-#    ⚠️ 注意：`quiet-therm` 被 vendor 的电池充电限制依赖(阈值 33~52℃, actions battery)，
-#    仍在列表中 —— 跟随模式下高热时会触发充电限制，属"高温限充"的正当保护，如需放开请另行评估。
-#    曾用名：lcm-thermal（已移除）
+# ⚠️ 5.2.2：`quiet-therm` 同样已移除，理由见文件头「5.2.2 关键修复」。
+#    两个已移除的温区：lcm-thermal（面板背光）、quiet-therm（框架 skin + 充电限流 + CPU/GPU 限频）
 apply_skin() {
   _val="$1"
   # 二次保险: 任何情况下都不写出超过 SKIN_MAX 的值
@@ -148,7 +166,7 @@ apply_skin() {
     t=$(cat "$tz/type" 2>/dev/null) || continue
     case "$t" in
       ap-therm|front_temp|back_temp|user_temp|user_front_temp|user_back_temp|\
-      quiet-therm|flash-led-ntc|rear-cam-ntc|fcam-ntc|\
+      flash-led-ntc|rear-cam-ntc|fcam-ntc|\
       wlan-therm|xo-therm|ufs-therm|ddr)
         echo "$_val" > "$tz/emul_temp" 2>/dev/null ;;
     esac
