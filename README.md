@@ -19,6 +19,8 @@
 
 ### 1️⃣ touch_Y700G4_C16T — 触控优化 `v5.0.2`
 
+> ⚠️ **若使用酷安 @一只鸽子 的新移植包（咕咕 C16.0.8 v17.6 正式版），触控优化已内置，无需再刷本模块。**
+
 直控 Novatek 触控芯片，为游戏场景深度调优。
 
 - 🔥 **360Hz 高采样** — 直控触控 IC（HighReportRate / game_edge / report_threshold），游戏内采样率拉满
@@ -92,7 +94,7 @@
 
 从 [Releases](https://github.com/boluo4169-commits/touch_Y700G4_C16/releases) 下载 zip：
 
-- 触控：`touch_Y700G4_C16T_v5.0.2.zip`
+- 触控：`touch_Y700G4_C16T_v5.0.2.zip`（**用 @一只鸽子 新移植包的话可跳过** —— 触控已内置）
 - 温控：`ExtremeGT_5.3_Y700G4_C16_safe.zip`（日常推荐）/ `ExtremeGT_5.3_Y700G4_C16_full.zip`（跑分/极限场景，更晚降频）
 
 KSU Manager → 模块 → 从本地安装 → 重启生效。两个模块互相独立、可同时使用。
