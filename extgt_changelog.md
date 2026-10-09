@@ -1,6 +1,49 @@
-# Extreme GT 5.2.2-Y700G4_C16 更新日志
+# Extreme GT 5.3-Y700G4_C16 更新日志
 > ℹ️ 本模块（id=extreme_gt）与触控模块（id=touch_Y700G4_C16T）互相独立。
 > 若你之前装过旧的二合一模块 touch_Y700G4_C16 或其他温控类模块（如原版 Extreme GT），**请先卸载并重启后再刷入本模块**，避免同类功能冲突。
+## 5.3-Y700G4_C16（versionCode safe=5301 / full=5302，tag v5.3）🎮 修复游戏掉帧 / 刷新率 144↔165 横跳
+
+### 这版修什么
+有用户反馈打游戏时**掉帧严重、帧率一直在跳**，不如以前流畅。查下来根因是模块自己把系统的「动态刷新率」链路打断了。
+
+### 根因：`stop horae` 掐断了动态帧率的温度反馈
+模块从 5.0.1 起默认 `stop horae`（OPPO 智能温控服务），当作「去温控」的一部分。实测发现这个动作有连锁后果：
+
+1. `horae` 停掉后，SystemUI 的 `DynamicFrameRateManagerImpl` **无法注册 ThermalListener**，logcat 持续报（约每 5.8s 一次）：
+   - `E HoraeHelper: horae is not open`
+   - `D DynamicFramerate [DynamicFrameRateManagerImpl]: register ThermalListener failed`
+2. 同时 `oiface` 每秒报 `getCurrentThermal, failed to get horae service`
+3. 系统级「动态刷新率」失去温度反馈输入，刷新率在 **144Hz ↔ 165Hz 之间反复切换**（`COSA->DynamicRefreshRate` / `ScreenModeControl` 日志可见 `current refresh rate 144 setvalue 165`），每次切屏都要重配 DPU/面板
+4. 游戏内表现：持续掉帧、帧率跳动
+
+### 真机对照（Y700G4 + ColorOS16 新底包，暗区突围对局 40s 采样）
+
+| 指标 | 修复前 | 修复后 |
+|---|---|---|
+| 屏幕模式切换 | 爆发式（4s 内 6+ 次） | **0 次** |
+| `targetfps` 变化 | 26 次 / 25s | **0 次** |
+| `register ThermalListener failed` | 每 5.8s 一次 | **0 次** |
+| `horae is not open` | 109 次 / 25s | **0 次** |
+| `failed to get horae service` | ~1 次/秒 | **0 次** |
+| **cpu7 超核（4.32GHz）** | 死钉 1.02 GHz | **可冲到 4.32 GHz** |
+| 内存 free / swap used | 151MB / 5.5GB | 636MB / 1.07GB |
+
+意外收获：`stop horae` 不只打断动态帧率，**连超核的 boost 能力一起按住了**——修复前 cpu6/cpu7 全程钉在最低频 1.02GHz，修复后能正常按负载冲到 4.32GHz。
+另外修复前后 CPU/GPU 的 `cooling_device` 均为 0（未触发降频），温度 50–55℃，**恢复 horae 没有引入热降频**。
+
+### 本版变更
+- 🎮 **`HORAE_OFF` 默认由 1 改为 0**（保留 horae 温控服务运行）
+- 📄 **不再覆盖 `sys_thermal_config.xml`**：原先把 `isOpen` / `is_feature_on` 置 0（正是 `horae is not open` 的直接来源），现恢复原厂文件
+- 🔢 版本号与 offset 仍走构建期占位符，以后改版只动 `build.sh` 顶部一行
+
+### 影响与取舍
+- 恢复 horae 会同时恢复**框架层温控策略**（日志可见 `ThermalControlState=true`）。当前实测待机/对局温度 50–55℃、cooling 全 0，未触发降频；**长时间高负载游戏时是否出现降频需要继续观察**
+- 保留下来的性能收益：`quiet-therm` 出列（5.2.2）、`thermal-engine_cpu_0.conf` 的 +7℃ 阈值，这两条不受影响
+- 若确认 horae 引入热降频副作用，把 `service.sh` 的 `HORAE_OFF` 改回 `1` 即可回退
+
+### 适用
+同 5.2.2：Y700 四代 / SM8750P（sun 平台）/ ColorOS 16 移植版。`id` 未变，直接覆盖刷入对应变体后重启。
+
 ## 5.2.2-Y700G4_C16（versionCode safe=5221 / full=5222，tag v5.2.2）🚨 修复充电被限流
 
 ### 这版修什么

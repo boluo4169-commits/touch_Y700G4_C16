@@ -2,15 +2,15 @@
 # ============================================================
 # 模块打包脚本 — Extreme GT Y700G4 双变体 + touch
 # 产出 (KSU 模块格式: module.prop 在 zip 根, 条目无 ./ 前缀):
-#   ExtremeGT_5.2.1_Y700G4_C16_safe.zip
-#   ExtremeGT_5.2.1_Y700G4_C16_full.zip
+#   ExtremeGT_5.3_Y700G4_C16_safe.zip
+#   ExtremeGT_5.3_Y700G4_C16_full.zip
 #   touch_Y700G4_C16T_v5.0.2.zip
 # 用法: bash build.sh   (CI 与本地通用; 有 zip 用 zip, 否则回退 python)
 # ============================================================
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VER=5.2.2               # 模块版本号(唯一改动点, module.prop/zip 名/描述都取这里)
+VER=5.3               # 模块版本号(唯一改动点, module.prop/zip 名/描述都取这里)
 EG=extreme_gt
 TC=touch_Y700G4_C16T/touch_Y700G4_C16T
 BASE=https://raw.githubusercontent.com/boluo4169-commits/touch_Y700G4_C16/main
@@ -86,11 +86,11 @@ for v in safe full; do
   done
 
   if [ "$v" = safe ]; then
-    batt=0; code=5221; namecn="精简版"; upd="$BASE/extgt_update_safe.json"; offset=20
-    desc="Y700四代 ColorOS16 温控解除·精简版 $VER: 修复充电被限流(quiet-therm 移出伪装列表); 外壳温区跟随式伪装; 修复游戏时突然降频(屏幕变暗)。CPU限频阈值+7C, 电池链路零改动。"
+    batt=0; code=5301; namecn="精简版"; upd="$BASE/extgt_update_safe.json"; offset=20
+    desc="Y700四代 ColorOS16 温控解除·精简版 $VER: 保留 horae 温控服务(修复游戏掉帧/刷新率144-165横跳); 修复充电被限流(quiet-therm 移出伪装列表); 外壳温区跟随式伪装。CPU限频阈值+7C, 电池链路零改动。"
   else
-    batt=1; code=5222; namecn="完全版"; upd="$BASE/extgt_update_full.json"; offset=28
-    desc="Y700四代 ColorOS16 温控解除·完全版 $VER: 修复充电被限流(quiet-therm 移出伪装列表); 外壳温区跟随式伪装(offset 28, 更晚降频) + 电池温度伪装29.5C + CPU限频阈值+7C。"
+    batt=1; code=5302; namecn="完全版"; upd="$BASE/extgt_update_full.json"; offset=28
+    desc="Y700四代 ColorOS16 温控解除·完全版 $VER: 保留 horae 温控服务(修复游戏掉帧/刷新率144-165横跳); 修复充电被限流(quiet-therm 移出伪装列表); 外壳温区跟随式伪装(offset 28, 更晚降频) + 电池温度伪装29.5C + CPU限频阈值+7C。"
   fi
   sed -i "s|__BATT_EMUL__|$batt|; s|__VARIANT__|$v|; s|__VERSION__|$VER|; s|__VERSIONCODE__|$code|; s|__NAME_CN__|$namecn|; s|__DESC__|$desc|; s|__UPDJSON__|$upd|; s|__SKIN_OFFSET__|$offset|" \
     "$s/service.sh" "$s/customize.sh" "$s/module.prop" "$s/config"

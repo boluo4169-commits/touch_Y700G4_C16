@@ -35,9 +35,21 @@ T=29500                        # 电池类伪装温度 29.5C
 BATT_EMUL=__BATT_EMUL__
 
 # 是否关闭 OPPO 智能温控服务 horae
-#   1 = 关闭 horae（默认，与 5.0.1 一致）
-#   0 = 保留 horae（未在本机验证，仅在确认无副作用后才建议使用）
-HORAE_OFF=1
+#   1 = 关闭 horae（5.0.1 ~ 5.2.2 的默认行为）
+#   0 = 保留 horae（2026-10-09 起改为默认；仍需自行确认无热降频副作用）
+#
+# 变更理由（2026-10-09，Y700G4 + ColorOS16 新底包 实机定位）：
+#   stop horae 之后，SystemUI 的 DynamicFrameRateManagerImpl 无法注册
+#   ThermalListener —— logcat 持续报（约每 5.8s 一次）：
+#     E HoraeHelper: horae is not open
+#     D DynamicFramerate [DynamicFrameRateManagerImpl]: register ThermalListener failed
+#   同时 oiface 每秒报 getCurrentThermal, failed to get horae service。
+#   后果：系统级「动态刷新率」失去温度反馈输入，刷新率在 144Hz <-> 165Hz
+#   之间反复切换（日志 COSA->DynamicRefreshRate / ScreenModeControl
+#   "current refresh rate 144 setvalue 165" 等），每次切屏都要重配 DPU/面板，
+#   游戏内表现为持续掉帧、帧率跳动。
+#   * 待重启验证：确认无副作用后转为正式默认；若引入热降频则回退为 1。
+HORAE_OFF=0
 
 echo "$(date): ===== Extreme GT ${VER} service start (variant BATT_EMUL=${BATT_EMUL}) =====" > "$LOG_FILE"
 
@@ -73,7 +85,7 @@ else
 fi
 
 # ============================================================
-# 3. OPPO 智能温控服务 horae（5.1.1: 恢复 5.0.1 行为，默认关闭）
+# 3. OPPO 智能温控服务 horae（2026-10-09: 改为默认保留运行，理由见 HORAE_OFF 注释）
 # ============================================================
 if [ "$HORAE_OFF" = "1" ]; then
   stop horae 2>/dev/null

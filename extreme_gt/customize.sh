@@ -74,17 +74,25 @@ do
   echo "$rows" | tr -s '\n' > $module$file
 done
 
-# sys_thermal_config.xml — 关闭热服务特征
-xml_override 'sys_thermal_config.xml' "isOpen=0
-more_heat_threshold=550
-heat_threshold=530
-less_heat_threshold=500
-preheat_threshold=480
-preheat_dex_oat_threshold=460
-thermal_battery_temp=0
-is_feature_on=0
-is_upload_log=0
-is_upload_errlog=0"
+# sys_thermal_config.xml — 【2026-10-09 起停止覆盖，恢复原厂】
+#   原先此处把 isOpen / is_feature_on 置 0 并把各级热阈值整体抬高，
+#   属于「去温控」的一部分。但实机定位发现它直接打断了 ColorOS 的动态帧率链路：
+#     <isOpen>0</isOpen>  ->  HoraeHelper: horae is not open
+#                         ->  DynamicFrameRateManagerImpl: register ThermalListener failed
+#                         ->  系统动态刷新率失去温度反馈
+#                         ->  屏幕刷新率在 144Hz <-> 165Hz 反复切换 -> 游戏卡顿
+#   故不再生成该文件的覆盖副本，让系统使用原厂 /odm|x 的 sys_thermal_config.xml。
+#   * 待重启验证：若确认与帧率问题无关，可恢复下面这段覆盖。
+# xml_override 'sys_thermal_config.xml' "isOpen=0
+# more_heat_threshold=550
+# heat_threshold=530
+# less_heat_threshold=500
+# preheat_threshold=480
+# preheat_dex_oat_threshold=460
+# thermal_battery_temp=0
+# is_feature_on=0
+# is_upload_log=0
+# is_upload_errlog=0"
 
 # sys_high_temp_protect*.xml — 关闭高温保护 (电量链路, 仅 full 变体)
 if [ "$VARIANT" = "full" ]; then
