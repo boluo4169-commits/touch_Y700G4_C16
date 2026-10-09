@@ -8,7 +8,7 @@
 > 实测把 `HORAE_OFF` 改回 `1`（停用 horae）后，**掉帧完全一样**（FPS MIN 67 vs 68）。
 > 5.3 真实修掉的是两项报错（`register ThermalListener failed` / `horae is not open`）与刷新率 144↔165 横跳，**这些属实**，但不是掉帧的原因。同时排除 `AppOpt` 线程绑核（绑 `6-7` 与绑 `0-7` 两局都照掉）。
 >
-> ### ✅ 掉帧的有效方案：用第三方调度 App 的「性能模式」
+> ### ✅ 掉帧的有效方案：用 **Scene** 的「性能模式」调频调度
 >
 > **不需要刷模块。** 改的是调频器响应（实测掉帧时大核 cpu6/7 频率反而从 2515MHz 降到 1520MHz，即调频器没跟上主线程需求）。
 >
@@ -25,7 +25,7 @@
 
 > **v5.3 已删除**（原 Release 已下线，tag 保留）｜触控模块 v5.0.2
 
-> - extreme_gt 5.3 修的是「**打游戏掉帧、帧率一直在跳**」：根因是模块从 5.0.1 起默认 `stop horae`（OPPO 智能温控服务），SystemUI 的 `DynamicFrameRateManagerImpl` 因此**注册不到 ThermalListener**（logcat 持续报 `HoraeHelper: horae is not open` 与 `register ThermalListener failed`，约每 5.8s 一次），系统级动态刷新率失去温度反馈，在 **144Hz ↔ 165Hz 之间反复切换**，每次切屏都要重配 DPU/面板。真机对照（暗区突围对局 40s 采样）：屏幕模式切换 爆发式→**0 次**、`targetfps` 变化 26 次→**0 次**、三项报错全部**归零**；意外收获是修复前 **cpu6/cpu7（4.32GHz 超核）全程死钉 1.02GHz**，修复后能正常按负载冲到 4.32GHz。本版 `HORAE_OFF` 默认改为 0，并**不再覆盖 `sys_thermal_config.xml`**。
+> - ~~extreme_gt 5.3 修的是「**打游戏掉帧、帧率一直在跳**」~~ —— ⚠️ **归因已勘误，见上**。5.3 实际修掉的是 `register ThermalListener failed` / `horae is not open` 两项报错与刷新率 144Hz↔165Hz 横跳（属实，但**不是掉帧的原因**）；`HORAE_OFF` 默认改 0、不再覆盖 `sys_thermal_config.xml` 这两处改动本身有效。
 > - ⚖️ 取舍：恢复 horae 会同时恢复**框架层温控策略**（日志可见 `ThermalControlState=true`）。实测待机/对局温度 50–55℃、CPU/GPU `cooling_device` 全 0，未触发降频；长时间高负载是否降频仍需观察。想回退只需把 `service.sh` 的 `HORAE_OFF` 改回 `1`。
 > - extreme_gt 5.2.2 修的是「**充电被限流**」：把 `quiet-therm` 移出伪装列表。这个温区不只喂框架的 skin，它同时是 **12 份 vendor 策略**的输入，其中 4 份 `thermal-engine_battery_*.conf` 直接用它决定充电电流上限（档位从 30℃ 起，实测 30℃→10A、38℃→3A、49℃→0.5A）。跟随式伪装把「硅温 − offset」写进它，等于把 40~55℃ 的假板温塞进充电链路，有用户反馈"充一晚上充不满"，真机复现到 0.5A；移除后同一负载下回到 3A（真实板温对应档位），空闲充电 10A。旧版 5.0.1 恒定 29.5℃ 恰好落在最低档以下，所以没这个问题。
 > - extreme_gt 5.2.1 只动了一处，完全版的跟随偏移量从 20 提到 28，真实硅温要到 76℃ 左右才开始降频（原来 68℃）。精简版 safe 保持 20 不变。
